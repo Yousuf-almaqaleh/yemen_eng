@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الملف التجاري | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <style>
+        .company-hero { background: var(--primary-dark); padding: 50px 0; color: #fff; border-bottom: 2px solid var(--border-color); }
+        .company-logo { width: 120px; height: 120px; border-radius: var(--border-radius); object-fit: cover; border: 4px solid #fff; box-shadow: var(--shadow-md); background: #fff; }
+    </style>
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main>
+        <div class="company-hero">
+            <div class="container animate-item">
+                <div id="company-header-inner"></div>
+            </div>
+        </div>
+        <div class="main-layout container">
+            <div class="two-col-layout">
+                <div>
+                    <div class="section-block" id="company-about"></div>
+                    <div class="section-block" id="company-services">
+                        <h2 class="section-block-title">تخصصات وخدمات المكتب</h2>
+                        <div id="services-tags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="section-block" id="company-sidebar"></div>
+                    <div class="section-block" id="company-action"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        if (!id) { window.location.href = 'offices.html'; return; }
+        const users = getData(STORAGE_KEYS.USERS);
+        const provider = users.find(u => u.id === id);
+        if (!provider) { window.location.href = 'offices.html'; return; }
+
+        const name = provider.officeName || provider.workshopName || provider.companyName || provider.fullName;
+        const typeLabels = { office: 'مكتب هندسي', workshop: 'ورشة فنية', company: 'شركة هندسية' };
+        document.title = `${name} | Yemen Engineer`;
+
+        document.getElementById('company-header-inner').innerHTML = `
+            <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+                <img src="${provider.avatar || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200'}" class="company-logo">
+                <div>
+                    <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:6px;">${name}</h1>
+                    <p style="color:rgba(255,255,255,.8);margin-bottom:10px;">${typeLabels[provider.type] || provider.type} المعتمد في ${provider.governorate}</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <span class="badge badge-verified">معتمد</span>
+                        <span style="color:rgba(255,255,255,.9);">${provider.governorate} - ${provider.city || ''}</span>
+                    </div>
+                </div>
+            </div>`;
+
+        document.getElementById('company-about').innerHTML = `
+            <h2 class="section-block-title">من نحن</h2>
+            <p style="font-size:.92rem;line-height:1.75;color:var(--dark-color);">${provider.bio || 'لم يتم إضافة نبذة تعريفية.'}</p>`;
+
+        const tagsContainer = document.getElementById('services-tags');
+        const specs = provider.specialty || provider.activityType || 'خدمات هندسية عامة';
+        specs.split('،').concat(specs.split(',')).forEach(s => {
+            const clean = s.trim();
+            if (clean) tagsContainer.innerHTML += `<span class="badge" style="background:#f1f3f5;color:var(--dark-color);padding:8px 14px;font-size:.85rem;font-weight:600;">${clean}</span>`;
+        });
+
+        document.getElementById('company-sidebar').innerHTML = `
+            <h2 class="section-block-title">تفاصيل الاتصال والعمل</h2>
+            <div style="display:flex;flex-direction:column;gap:14px;font-size:.88rem;">
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">التقييم العام</span><span style="font-weight:700;color:#f59e0b;">${provider.rating || 5} (${provider.ratingCount || 0} تقييم)</span></div>
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">نوع الكيان</span><span style="font-weight:700;">${typeLabels[provider.type] || provider.type}</span></div>
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">المدينة</span><span style="font-weight:700;">${provider.city || ''}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">مواعيد العمل</span><span style="font-weight:700;">8:00 ص - 6:00 م</span></div>
+            </div>`;
+
+        const currentUser = getCurrentUser();
+        const canContact = currentUser && currentUser.id !== provider.id;
+        document.getElementById('company-action').innerHTML = `
+            <h2 class="section-block-title">تواصل آمن</h2>
+            ${canContact ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">انشر طلب خدمة لمناقشة التفاصيل وتلقي عرض سعر رسمي عبر المنصة باحترافية وسرية.</p>
+                <a href="post-request.html?providerId=${provider.id}" class="btn btn-primary" style="width:100%;">اطلب خدمة من الكيان</a>` : 
+                `<p style="font-size:.85rem;color:var(--text-muted);">سجل الدخول كعميل لطلب الخدمات.</p>
+                <a href="login.html" class="btn btn-primary" style="width:100%;">تسجيل الدخول</a>`}`;
+    });
+    </script>
+</body>
+</html>

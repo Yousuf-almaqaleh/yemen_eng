@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <style>
+        .auth-page { min-height: calc(100vh - 149px); display: flex; align-items: center; justify-content: center; padding: 60px 20px; background: radial-gradient(circle at 10% 20%, rgba(15,76,92,0.03) 0%, rgba(26,107,128,0.05) 90%); }
+        .auth-card { background: #fff; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-lg); padding: 45px 40px; width: 100%; max-width: 480px; border: 1.5px solid var(--border-color); position: relative; overflow: hidden; }
+        .auth-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: var(--primary-gradient); }
+        .auth-logo { text-align: center; margin-bottom: 24px; }
+        .auth-logo .logo-icon { width: 58px; height: 58px; font-size: 1.2rem; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; background: var(--primary-gradient); color: #fff; border-radius: 14px; font-weight: 800; }
+        .auth-title { font-size: 1.6rem; font-weight: 800; text-align: center; margin-bottom: 8px; color: var(--dark-color); }
+        .auth-sub { font-size: 0.88rem; text-align: center; color: var(--text-muted); margin-bottom: 24px; }
+        .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+        .demo-btn { padding: 10px; border: 1.5px solid var(--border-color); border-radius: var(--border-radius-sm); background: #fafafa; cursor: pointer; font-size: 0.82rem; font-weight: 700; color: var(--dark-color); transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; }
+        .demo-btn:hover { border-color: var(--primary-color); background: rgba(15,76,92,.05); color: var(--primary-color); transform: translateY(-1px); box-shadow: var(--shadow); }
+        .divider { text-align: center; margin: 20px 0; color: var(--text-muted); font-size: .82rem; position: relative; }
+        .divider::before, .divider::after { content:''; position:absolute; top:50%; width:38%; height:1px; background:var(--border-color); }
+        .divider::before { right:0; } .divider::after { left:0; }
+    </style>
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main class="auth-page">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="logo-icon">YE</div>
+                <h1 class="auth-title">تسجيل الدخول</h1>
+                <p class="auth-sub">مرحباً بك في منصة مهندسي اليمن</p>
+            </div>
+
+            <p style="font-size:.85rem;font-weight:700;margin-bottom:10px;color:var(--dark-color);">دخول تجريبي سريع:</p>
+            <div class="demo-grid">
+                <button class="demo-btn" onclick="handleDemoLogin('client')">عميل</button>
+                <button class="demo-btn" onclick="handleDemoLogin('engineer')">مهندس</button>
+                <button class="demo-btn" onclick="handleDemoLogin('agent')">وكيل</button>
+                <button class="demo-btn" onclick="handleDemoLogin('admin')">مدير النظام</button>
+            </div>
+
+            <div class="divider">أو ادخل ببياناتك</div>
+
+            <div id="login-error" class="alert alert-danger" style="display:none;"></div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label">البريد الإلكتروني</label>
+                    <input type="email" id="email" class="form-control" placeholder="example@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">كلمة المرور</label>
+                    <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">دخول</button>
+            </form>
+            <p style="text-align:center;margin-top:20px;font-size:.88rem;">ليس لديك حساب؟ <a href="register.html" style="color:var(--primary-color);font-weight:700;">انضم الآن</a></p>
+        </div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    if (getCurrentUser()) window.location.href = 'dashboard.html';
+
+    function handleDemoLogin(role) {
+        const r = demoLogin(role);
+        if (r.success) {
+            showToast('تم تسجيل الدخول بنجاح!', 'success');
+            setTimeout(() => {
+                if (r.user.type === 'admin') window.location.href = 'admin/index.html';
+                else window.location.href = 'dashboard.html';
+            }, 500);
+        } else showToast(r.message, 'error');
+    }
+
+    document.getElementById('login-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const r = login(document.getElementById('email').value, document.getElementById('password').value);
+        if (r.success) {
+            showToast('تم تسجيل الدخول بنجاح!', 'success');
+            setTimeout(() => {
+                if (r.user.type === 'admin') window.location.href = 'admin/index.html';
+                else window.location.href = 'dashboard.html';
+            }, 600);
+        } else {
+            const errEl = document.getElementById('login-error');
+            errEl.textContent = r.message;
+            errEl.style.display = 'block';
+        }
+    });
+    </script>
+</body>
+</html>

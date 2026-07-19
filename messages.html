@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المحادثات | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main class="main-layout container">
+        <h1 style="font-size:1.3rem;font-weight:800;margin-bottom:6px;">المحادثة الآمنة</h1>
+        <div id="request-info" style="margin-bottom:20px;"></div>
+        <div class="alert alert-info" style="margin-bottom:20px;font-size:.85rem;">جميع المحادثات محمية. يُمنع مشاركة أرقام الهواتف أو الروابط الخارجية.</div>
+        <div class="chat-wrapper">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-bar">
+                <input type="text" id="msg-input" placeholder="اكتب رسالتك هنا..." onkeydown="if(event.key==='Enter') sendMessage()">
+                <button class="btn btn-primary btn-sm" onclick="sendMessage()">ارسال</button>
+            </div>
+        </div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    let currentUser, requestId, currentRequest;
+    document.addEventListener('DOMContentLoaded', () => {
+        currentUser = getCurrentUser();
+        if (!currentUser) { window.location.href = 'login.html'; return; }
+        const params = new URLSearchParams(window.location.search);
+        requestId = params.get('id');
+        if (!requestId) { window.location.href = 'requests.html'; return; }
+        const requests = getData(STORAGE_KEYS.REQUESTS);
+        currentRequest = requests.find(r => r.id === requestId);
+        if (!currentRequest) { window.location.href = 'requests.html'; return; }
+        const reqInfoEl = document.getElementById('request-info');
+        reqInfoEl.innerHTML = `<div class="section-block" style="margin-bottom:0;padding:16px;"><strong>المشروع:</strong> ${currentRequest.title}</div>`;
+        loadMessages();
+    });
+
+    function loadMessages() {
+        const msgs = getData(STORAGE_KEYS.MESSAGES).filter(m => m.requestId === requestId).sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
+        const container = document.getElementById('chat-messages');
+        container.innerHTML = msgs.map(m => {
+            if (m.senderId === 'SYSTEM') return `<div class="chat-bubble system-msg">${m.content || m.message}</div>`;
+            const isMine = m.senderId === currentUser.id;
+            return `<div class="chat-bubble ${isMine ? 'mine' : 'theirs'}">
+                ${m.content || m.message}
+                <span class="chat-time">${formatDate(m.timestamp || m.createdAt)}</span>
+            </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (!text) return;
+        if (hasSensitiveContent(text)) {
+            showToast('رسالتك تحتوي على معلومات تواصل مباشر. يُمنع مشاركة أرقام الهواتف أو الروابط خارج المنصة.', 'error', 5000);
+            return;
+        }
+        insertRecord(STORAGE_KEYS.MESSAGES, {
+            requestId,
+            senderId: currentUser.id,
+            receiverId: '',
+            content: text,
+            timestamp: new Date().toISOString()
+        });
+        input.value = '';
+        loadMessages();
+    }
+    </script>
+</body>
+</html>

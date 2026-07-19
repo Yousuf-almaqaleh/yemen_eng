@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المشاريع والمناقصات | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <div class="page-header">
+        <div class="container">
+            <h1>سوق المشاريع والمناقصات الهندسية</h1>
+            <p>اعثر على مشروع مناسب أو انشر طلبك للحصول على عروض تنافسية</p>
+        </div>
+    </div>
+    <main class="main-layout container">
+        <div style="margin-bottom:24px;">
+            <h2 style="font-size:1.2rem;font-weight:700;">المشاريع والمناقصات المتاحة</h2>
+        </div>
+        <div class="filter-bar">
+            <div class="filter-field"><label>التصنيف</label>
+                <select id="f-cat">
+                    <option value="">كل التصنيفات</option>
+                    <option>طاقة شمسية</option><option>معماري</option><option>مدني وإنشاءات</option>
+                    <option>ميكانيكا</option><option>شبكات واتصالات</option><option>تكييف وتبريد</option>
+                </select>
+            </div>
+            <div class="filter-field"><label>المحافظة</label>
+                <select id="f-gov">
+                    <option value="">كل المحافظات</option>
+                    <option>صنعاء</option><option>عدن</option><option>تعز</option><option>حضرموت</option>
+                </select>
+            </div>
+            <div class="filter-field"><label>الحالة</label>
+                <select id="f-status">
+                    <option value="">كل الحالات</option>
+                    <option value="NEW">مفتوح للعروض</option>
+                    <option value="IN_PROGRESS">جارٍ التنفيذ</option>
+                    <option value="COMPLETED">مكتمل</option>
+                </select>
+            </div>
+            <button onclick="applyFilters()" class="btn btn-primary">بحث</button>
+        </div>
+        <div class="ad-placeholder" data-ad-type="banner"></div>
+        <div id="requests-list" style="display:flex;flex-direction:column;gap:16px;"></div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    let allRequests = [];
+    document.addEventListener('DOMContentLoaded', () => {
+        allRequests = getData(STORAGE_KEYS.REQUESTS);
+        renderRequests(allRequests);
+    });
+
+    function applyFilters() {
+        const cat = document.getElementById('f-cat').value;
+        const gov = document.getElementById('f-gov').value;
+        const status = document.getElementById('f-status').value;
+        let results = allRequests;
+        if (cat) results = results.filter(r => r.category === cat);
+        if (gov) results = results.filter(r => r.governorate === gov);
+        if (status) results = results.filter(r => r.status === status);
+        renderRequests(results);
+    }
+
+    function renderRequests(list) {
+        const container = document.getElementById('requests-list');
+        if (!list.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد طلبات</div></div>'; return; }
+        const users = getData(STORAGE_KEYS.USERS);
+        container.innerHTML = list.map(r => {
+            const client = users.find(u => u.id === r.clientId) || {};
+            const statusInfo = getStatusLabel(r.status);
+            return `
+            <div class="card" style="display:flex;gap:20px;align-items:flex-start;">
+                <div style="flex:1;">
+                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                        <h3 style="font-size:1.02rem;font-weight:700;color:var(--dark-color);">${r.title}</h3>
+                        <span class="badge ${statusInfo.cls}">${statusInfo.text}</span>
+                    </div>
+                    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:10px;">${r.description.substring(0,120)}...</p>
+                    <div class="card-meta">
+                        <span>التصنيف: ${r.category}</span>
+                        <span>الميزانية: ${formatNumber(r.budget)} ريال</span>
+                        <span>المدة: ${r.duration}</span>
+                        <span>المحافظة: ${r.governorate}</span>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
+                    <a href="request-details.html?id=${r.id}" class="btn btn-primary btn-sm">عرض التفاصيل</a>
+                    <span style="font-size:.75rem;color:var(--text-muted);">${formatDate(r.createdAt)}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    </script>
+</body>
+</html>

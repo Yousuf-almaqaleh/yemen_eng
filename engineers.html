@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل المهندسين | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <div class="page-header">
+        <div class="container">
+            <h1>دليل المهندسين الموثقين</h1>
+            <p>ابحث وتواصل مع أفضل الكوادر الهندسية اليمنية المعتمدة</p>
+        </div>
+    </div>
+    <main class="main-layout container">
+        <div class="filter-bar">
+            <div class="filter-field"><label>بحث بالاسم</label><input type="text" id="f-name" placeholder="اسم المهندس..."></div>
+            <div class="filter-field"><label>التخصص</label>
+                <select id="f-spec">
+                    <option value="">كل التخصصات</option>
+                    <option>طاقة شمسية</option><option>معماري</option><option>مدني وإنشاءات</option>
+                    <option>ميكانيكا</option><option>تكييف وتبريد</option><option>مساحة</option>
+                    <option>شبكات واتصالات</option>
+                </select>
+            </div>
+            <div class="filter-field"><label>المحافظة</label>
+                <select id="f-gov">
+                    <option value="">كل المحافظات</option>
+                    <option>صنعاء</option><option>عدن</option><option>تعز</option><option>حضرموت</option><option>الحديدة</option><option>إب</option>
+                </select>
+            </div>
+            <button onclick="applyFilters()" class="btn btn-primary">بحث</button>
+        </div>
+        <div class="ad-placeholder" data-ad-type="banner"></div>
+        <div id="engineers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;"></div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    let allEngineers = [];
+    document.addEventListener('DOMContentLoaded', () => {
+        const users = getData(STORAGE_KEYS.USERS);
+        allEngineers = users.filter(u => u.type === 'engineer');
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('spec')) document.getElementById('f-spec').value = params.get('spec');
+        if (params.get('gov')) document.getElementById('f-gov').value = params.get('gov');
+        if (params.get('search')) document.getElementById('f-name').value = params.get('search');
+        renderEngineers(allEngineers);
+        applyFilters();
+    });
+
+    function applyFilters() {
+        const name = document.getElementById('f-name').value.toLowerCase();
+        const spec = document.getElementById('f-spec').value;
+        const gov = document.getElementById('f-gov').value;
+        let results = allEngineers;
+        if (name) results = results.filter(e => e.fullName.toLowerCase().includes(name));
+        if (spec) results = results.filter(e => e.specialty === spec);
+        if (gov) results = results.filter(e => e.governorate === gov);
+        renderEngineers(results);
+    }
+
+    function renderEngineers(list) {
+        const container = document.getElementById('engineers-list');
+        if (!list.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد نتائج</div><p>جرّب تغيير فلاتر البحث.</p></div>'; return; }
+        container.innerHTML = list.map(e => `
+            <div class="card" style="display:flex;flex-direction:column;">
+                <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px;">
+                    <img src="${e.avatar}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--primary-color);">
+                    <div>
+                        <h3 class="card-title" style="margin-bottom:4px;">${e.fullName}</h3>
+                        <span class="badge ${e.isVerified ? 'badge-verified' : 'badge-pending'}">${e.isVerified ? 'موثق' : 'قيد المراجعة'}</span>
+                    </div>
+                </div>
+                <div class="card-meta">
+                    <span>تخصص: ${e.specialty || 'غير محدد'}</span>
+                    <span>خبرة: ${e.experienceYears || 0} سنة</span>
+                    <span>${e.governorate}</span>
+                </div>
+                <p class="card-desc">${(e.bio || '').substring(0, 100)}...</p>
+                <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-color);padding-top:14px;">
+                    <span style="color:#f59e0b;font-weight:700;">${e.rating || 5} (${e.ratingCount || 0})</span>
+                    <a href="engineer-details.html?id=${e.id}" class="btn btn-primary btn-sm">عرض الملف</a>
+                </div>
+            </div>`).join('');
+    }
+    </script>
+</body>
+</html>

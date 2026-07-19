@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>معرض المنتجات | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <style>
+        .store-hero { background: var(--primary-color); padding: 40px 0; color: #fff; border-bottom: 2px solid var(--border-color); }
+        .store-logo { width: 100px; height: 100px; border-radius: var(--border-radius-sm); object-fit: cover; border: 3px solid #fff; background: #fff; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main>
+        <div class="store-hero">
+            <div class="container">
+                <div id="store-header-inner"></div>
+            </div>
+        </div>
+        <div class="container page-section">
+            <div class="two-col-layout" style="grid-template-columns: 1fr 280px;">
+                <div>
+                    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px;">المنتجات المعروضة</h2>
+                    <div id="products-list-container" class="product-grid"></div>
+                </div>
+                <div>
+                    <div class="section-block" id="store-info-sidebar"></div>
+                    <div class="section-block">
+                        <h2 class="section-block-title">تواصل مع الوكيل</h2>
+                        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">للاستفسار عن أسعار الجملة أو تفاصيل التوريد والضمان، أرسل استفسارك مباشرة.</p>
+                        <button onclick="requestQuote()" class="btn btn-primary" style="width:100%;">طلب استفسار / تسعيرة</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for product details -->
+    <div class="modal-overlay" id="product-modal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <h2 class="modal-title" id="m-title"></h2>
+            <img src="" id="m-img" style="width:100%;height:220px;object-fit:cover;border-radius:var(--border-radius);margin-bottom:16px;">
+            <div style="font-size:1.2rem;font-weight:800;color:var(--primary-color);margin-bottom:10px;" id="m-price"></div>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;" id="m-spec"></div>
+            <p style="font-size:.88rem;line-height:1.6;color:var(--dark-color);" id="m-desc"></p>
+            <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border-color);text-align:left;">
+                <button class="btn btn-outline" onclick="closeModal()">إغلاق</button>
+                <button class="btn btn-primary" onclick="buyProduct()">طلب شراء المنتج</button>
+            </div>
+        </div>
+    </div>
+
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    let currentStore, currentStoreId, selectedProduct;
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        currentStoreId = params.get('id');
+        if (!currentStoreId) { window.location.href = 'stores.html'; return; }
+        const stores = getData(STORAGE_KEYS.STORES);
+        currentStore = stores.find(s => s.id === currentStoreId);
+        if (!currentStore) { window.location.href = 'stores.html'; return; }
+        document.title = `${currentStore.storeName} | Yemen Engineer`;
+
+        document.getElementById('store-header-inner').innerHTML = `
+            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+                <img src="${currentStore.logo}" class="store-logo">
+                <div>
+                    <h1 style="font-size:1.6rem;font-weight:800;margin-bottom:4px;">${currentStore.storeName}</h1>
+                    <p style="color:rgba(255,255,255,.8);font-size:.9rem;">${currentStore.specialty || ''}</p>
+                </div>
+            </div>`;
+
+        document.getElementById('store-info-sidebar').innerHTML = `
+            <h2 class="section-block-title">بيانات الوكالة</h2>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:.88rem;">
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">المحافظة</span><span style="font-weight:700;">${currentStore.governorate}</span></div>
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">المدينة</span><span style="font-weight:700;">${currentStore.city||''}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">العلامات التجارية</span><span style="font-weight:700;font-size:.8rem;">${(currentStore.brands||[]).join(', ')}</span></div>
+            </div>`;
+
+        renderProducts();
+    });
+
+    function renderProducts() {
+        const container = document.getElementById('products-list-container');
+        const list = currentStore.products || [];
+        if (!list.length) {
+            container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;grid-column:1/-1;">لا تتوفر منتجات حالياً في هذا المعرض.</p>';
+            return;
+        }
+        container.innerHTML = list.map((p, idx) => `
+            <div class="product-card" onclick="openProduct(${idx})" style="cursor:pointer;">
+                <img src="${p.image||'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200'}" class="product-img">
+                <div class="product-body">
+                    <h3 class="product-name">${p.name}</h3>
+                    <p class="product-spec">${p.specifications||''}</p>
+                    <div style="font-weight:800;color:var(--primary-color);margin-top:auto;">${formatNumber(p.price)} ريال</div>
+                </div>
+            </div>`).join('');
+    }
+
+    function openProduct(idx) {
+        selectedProduct = currentStore.products[idx];
+        document.getElementById('m-title').textContent = selectedProduct.name;
+        document.getElementById('m-img').src = selectedProduct.image || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300';
+        document.getElementById('m-img').alt = selectedProduct.name;
+        document.getElementById('m-price').textContent = `${formatNumber(selectedProduct.price)} ريال`;
+        document.getElementById('m-spec').textContent = selectedProduct.specifications || '';
+        document.getElementById('m-desc').textContent = selectedProduct.description || '';
+        document.getElementById('product-modal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('product-modal').classList.remove('open');
+    }
+
+    function buyProduct() {
+        const user = getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        closeModal();
+        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+            clientId: user.id,
+            title: `شراء منتج: ${selectedProduct.name}`,
+            category: 'مشتريات هندسية',
+            description: `طلب شراء منتج (${selectedProduct.name}) من متجر (${currentStore.storeName}). المواصفات: ${selectedProduct.specifications||'تلقائية'}. السعر المحدد: ${selectedProduct.price} ريال يمني.`,
+            governorate: currentStore.governorate,
+            city: currentStore.city || '',
+            budget: selectedProduct.price,
+            duration: 'يومين',
+            status: 'NEW',
+            registeredAt: new Date().toISOString()
+        });
+        insertRecord(STORAGE_KEYS.OFFERS, {
+            requestId: newReq.id,
+            providerId: currentStore.agentId,
+            providerName: currentStore.storeName,
+            providerSpecialty: 'وكيل معتمد',
+            price: selectedProduct.price,
+            duration: 'يومين',
+            notes: `عرض تلقائي لتلبية طلب شراء منتجك المختار من متجرنا.`,
+            status: 'submitted'
+        });
+        showToast('تم إنشاء طلب شراء للمنتج! جاري الانتقال لمتابعة الطلب...', 'success');
+        setTimeout(() => window.location.href = `request-details.html?id=${newReq.id}`, 1000);
+    }
+
+    function requestQuote() {
+        const user = getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+            clientId: user.id,
+            title: `طلب استفسار/تسعيرة من ${currentStore.storeName}`,
+            category: 'استشارات هندسية',
+            description: `طلب تسعير ومناقشة توريد معدات هندسية من متجر الكيان المعتمد. يرجى مراجعة تفاصيل التوريد والأصناف المطلوبة بمجرد قبول الطلب.`,
+            governorate: currentStore.governorate,
+            city: currentStore.city || '',
+            budget: 0,
+            duration: 'مفتوح',
+            status: 'NEW',
+            registeredAt: new Date().toISOString()
+        });
+        showToast('تم إرسال طلب عرض السعر! جاري فتح تفاصيل الطلب...', 'success');
+        setTimeout(() => window.location.href = `request-details.html?id=${newReq.id}`, 1000);
+    }
+    </script>
+</body>
+</html>

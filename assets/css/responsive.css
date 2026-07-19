@@ -1,0 +1,49 @@
+/* responsive.css — Mobile & Tablet Breakpoints */
+
+@media (max-width: 1024px) {
+    .two-col-layout { grid-template-columns: 1fr; }
+    .dashboard-layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+}
+
+@media (max-width: 768px) {
+    .header-inner { height: 60px; }
+    .main-nav {
+        display: none;
+        position: absolute;
+        top: 60px;
+        right: 0;
+        left: 0;
+        background: var(--primary-dark);
+        flex-direction: column;
+        padding: 10px 0 20px;
+        z-index: 999;
+        box-shadow: var(--shadow-md);
+    }
+    .main-nav.open { display: flex; }
+    .nav-link { padding: 12px 24px; }
+    .hamburger-btn { display: flex; }
+    .logo-sub { display: none; }
+    .auth-buttons .btn-outline { display: none; }
+    .header-actions { gap: 8px; }
+    .page-section { padding: 50px 0; }
+    .section-title { font-size: 1.4rem; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .chat-wrapper { height: 400px; }
+    .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+    .footer-links { flex-wrap: wrap; justify-content: center; }
+    .filter-bar { flex-direction: column; }
+    .filter-field { min-width: 100%; }
+}
+
+@media (max-width: 520px) {
+    body { font-size: 14px; }
+    .btn { padding: 8px 16px; font-size: 0.85rem; }
+    .btn-lg { padding: 11px 22px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-number { font-size: 1.5rem; }
+    .modal-box { padding: 24px; }
+    .chat-bubble { max-width: 90%; }
+    .offer-header { flex-wrap: wrap; }
+    .page-header h1 { font-size: 1.5rem; }
+}

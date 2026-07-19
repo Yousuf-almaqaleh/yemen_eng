@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نشر طلب خدمة | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main class="main-layout container" style="max-width:720px;">
+        <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:6px;">نشر طلب خدمة جديد</h1>
+        <p style="color:var(--text-muted);margin-bottom:28px;font-size:.9rem;">اشرح طلبك بالتفصيل للحصول على عروض دقيقة من المهندسين والورش.</p>
+        <div id="post-error" class="alert alert-danger" style="display:none;"></div>
+        <form id="post-form">
+            <div class="section-block">
+                <h2 class="section-block-title">تفاصيل الطلب</h2>
+                <div class="form-group"><label class="form-label">عنوان الطلب</label><input type="text" id="title" class="form-control" placeholder="مثال: تركيب منظومة طاقة شمسية 5 كيلووات" required></div>
+                <div class="form-group"><label class="form-label">التصنيف</label>
+                    <select id="category" class="form-control">
+                        <option>طاقة شمسية</option><option>معماري</option><option>مدني وإنشاءات</option>
+                        <option>ميكانيكا</option><option>تكييف وتبريد</option><option>شبكات واتصالات</option>
+                        <option>مساحة</option><option>استشارات هندسية</option><option>سيارات</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">وصف تفصيلي للطلب</label><textarea id="description" class="form-control" rows="6" placeholder="اشرح بالتفصيل ما تحتاجه، المواصفات الفنية، الأبعاد، أي تفاصيل تساعد المهندس على تقديم عرض دقيق." required></textarea></div>
+            </div>
+            <div class="section-block">
+                <h2 class="section-block-title">الموقع والتوقيت</h2>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group"><label class="form-label">المحافظة</label>
+                        <select id="governorate" class="form-control">
+                            <option>صنعاء</option><option>عدن</option><option>تعز</option><option>حضرموت</option>
+                            <option>الحديدة</option><option>إب</option><option>ذمار</option><option>مارب</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="form-label">المدينة / الحي</label><input type="text" id="city" class="form-control" required></div>
+                </div>
+                <div class="form-group"><label class="form-label">العنوان التفصيلي</label><input type="text" id="location" class="form-control" placeholder="مثال: بجانب مسجد النور، شارع..."></div>
+            </div>
+            <div class="section-block">
+                <h2 class="section-block-title">الميزانية والمدة</h2>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group"><label class="form-label">الميزانية المتاحة (ريال يمني)</label><input type="number" id="budget" class="form-control" placeholder="مثال: 350000" min="0"></div>
+                    <div class="form-group"><label class="form-label">المدة المتوقعة للتنفيذ</label><input type="text" id="duration" class="form-control" placeholder="مثال: 3 أيام، أسبوع..."></div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">نشر الطلب</button>
+        </form>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        if (!['client','engineer','office','workshop','company'].includes(user.type)) {
+            window.location.href = 'dashboard.html';
+        }
+    });
+
+    document.getElementById('post-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const user = getCurrentUser();
+        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+            clientId: user.id,
+            title: document.getElementById('title').value,
+            category: document.getElementById('category').value,
+            description: document.getElementById('description').value,
+            governorate: document.getElementById('governorate').value,
+            city: document.getElementById('city').value,
+            location: document.getElementById('location').value,
+            budget: parseInt(document.getElementById('budget').value) || 0,
+            duration: document.getElementById('duration').value,
+            status: 'NEW',
+            images: [],
+            registeredAt: new Date().toISOString()
+        });
+        insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+            userId: user.id,
+            title: 'تم نشر طلبك بنجاح',
+            message: `تم نشر طلب "${newReq.title}" وبات مرئياً للمهندسين والمزودين.`,
+            link: `request-details.html?id=${newReq.id}`,
+            read: false
+        });
+        showToast('تم نشر طلبك بنجاح!', 'success');
+        setTimeout(() => window.location.href = `request-details.html?id=${newReq.id}`, 800);
+    });
+    </script>
+</body>
+</html>

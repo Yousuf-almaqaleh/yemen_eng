@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الطلب | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main class="main-layout container">
+        <div class="two-col-layout">
+            <div>
+                <div class="section-block" id="req-details"></div>
+                <div class="section-block" id="offers-section"><h2 class="section-block-title">العروض المقدمة</h2><div id="offers-list"></div></div>
+                <div class="section-block" id="chat-section" style="display:none;">
+                    <h2 class="section-block-title">المحادثة الآمنة</h2>
+                    <div class="alert alert-info" style="font-size:.82rem;">تُمنع مشاركة أرقام الهواتف أو الروابط الخارجية داخل المحادثة.</div>
+                    <div class="chat-wrapper">
+                        <div class="chat-messages" id="chat-messages"></div>
+                        <div class="chat-input-bar">
+                            <input type="text" id="msg-input" placeholder="اكتب رسالتك هنا..." onkeydown="if(event.key==='Enter') sendMessage()">
+                            <button class="btn btn-primary btn-sm" onclick="sendMessage()">ارسال</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="section-block" id="req-sidebar"></div>
+                <div id="offer-form-section"></div>
+            </div>
+        </div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    let currentUser, request, requestId;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        currentUser = getCurrentUser();
+        const params = new URLSearchParams(window.location.search);
+        requestId = params.get('id');
+        if (!requestId) { window.location.href = 'requests.html'; return; }
+        const requests = getData(STORAGE_KEYS.REQUESTS);
+        request = requests.find(r => r.id === requestId);
+        if (!request) { window.location.href = 'requests.html'; return; }
+        renderRequest();
+        renderOffers();
+        if (request.status === 'IN_PROGRESS') renderChat();
+    });
+
+    function renderRequest() {
+        const users = getData(STORAGE_KEYS.USERS);
+        const client = users.find(u => u.id === request.clientId) || {};
+        const statusInfo = getStatusLabel(request.status);
+        document.getElementById('req-details').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+                <span class="badge ${statusInfo.cls}">${statusInfo.text}</span>
+                ${currentUser && currentUser.id === request.clientId && request.status === 'NEW' ?
+                    `<button onclick="cancelRequest()" class="btn btn-danger btn-sm">الغاء الطلب</button>` : ''}
+            </div>
+            <h1 style="font-size:1.3rem;font-weight:800;margin-bottom:12px;">${request.title}</h1>
+            <div class="card-meta" style="margin-bottom:14px;">
+                <span>التصنيف: ${request.category}</span>
+                <span>الميزانية: ${formatNumber(request.budget)} ريال</span>
+                <span>المدة: ${request.duration}</span>
+                <span>${request.governorate} - ${request.city}</span>
+            </div>
+            <p style="font-size:.9rem;line-height:1.7;color:var(--dark-color);">${request.description}</p>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-color);display:flex;align-items:center;gap:10px;">
+                <img src="${client.avatar||'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50'}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                <div><div style="font-weight:700;font-size:.88rem;">${client.fullName}</div><div style="font-size:.75rem;color:var(--text-muted);">نشر ${formatDate(request.createdAt)}</div></div>
+            </div>`;
+
+        document.getElementById('req-sidebar').innerHTML = `
+            <h2 class="section-block-title">ملخص الطلب</h2>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:.88rem;">
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">الحالة</span><span class="badge ${statusInfo.cls}">${statusInfo.text}</span></div>
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">الميزانية</span><span style="font-weight:700;">${formatNumber(request.budget)} ريال</span></div>
+                <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border-color);padding-bottom:10px;"><span style="color:var(--text-muted);">المدة</span><span style="font-weight:700;">${request.duration}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">الموقع</span><span style="font-weight:700;">${request.governorate}</span></div>
+            </div>`;
+    }
+
+    function renderOffers() {
+        const offers = getData(STORAGE_KEYS.OFFERS).filter(o => o.requestId === requestId);
+        const isClient = currentUser && currentUser.id === request.clientId;
+        const isProvider = currentUser && ['engineer','office','workshop','company'].includes(currentUser.type);
+        const alreadyOffered = offers.some(o => o.providerId === currentUser?.id);
+
+        const container = document.getElementById('offers-list');
+        if (!offers.length) {
+            container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;text-align:center;padding:20px;">لا توجد عروض بعد. كن أول من يقدم عرضاً!</p>';
+        } else {
+            container.innerHTML = offers.map(o => {
+                const isAccepted = o.id === request.selectedOfferId;
+                return `<div class="offer-card ${isAccepted ? 'accepted-offer' : ''}">
+                    <div class="offer-header">
+                        <img src="${o.providerAvatar||'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50'}" class="offer-avatar">
+                        <div style="flex:1;">
+                            <div style="font-weight:700;">${o.providerName}</div>
+                            <div style="font-size:.8rem;color:var(--text-muted);">${o.providerSpecialty||''}</div>
+                        </div>
+                        <div style="text-align:left;">
+                            <div class="offer-price">${formatNumber(o.price)} ريال</div>
+                            <div style="font-size:.78rem;color:var(--text-muted);">المدة: ${o.duration}</div>
+                        </div>
+                    </div>
+                    <p style="font-size:.87rem;color:var(--dark-color);line-height:1.6;margin-bottom:12px;">${o.notes}</p>
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        ${isAccepted ? '<span class="badge badge-success">العرض المقبول</span>' : ''}
+                        ${isClient && request.status === 'NEW' && !isAccepted ?
+                            `<button onclick="acceptOffer('${o.id}','${o.providerId}')" class="btn btn-success btn-sm">قبول هذا العرض</button>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        const offerFormSection = document.getElementById('offer-form-section');
+        if (isProvider && !alreadyOffered && request.status === 'NEW' && currentUser.id !== request.clientId) {
+            offerFormSection.innerHTML = `
+            <div class="section-block">
+                <h2 class="section-block-title">قدم عرضك</h2>
+                <form id="offer-form">
+                    <div class="form-group"><label class="form-label">السعر المقترح (ريال)</label><input type="number" id="o-price" class="form-control" required min="0"></div>
+                    <div class="form-group"><label class="form-label">مدة التنفيذ</label><input type="text" id="o-duration" class="form-control" placeholder="مثال: 3 أيام"></div>
+                    <div class="form-group"><label class="form-label">وقت الوصول</label><input type="text" id="o-arrival" class="form-control" placeholder="مثال: خلال 24 ساعة"></div>
+                    <div class="form-group"><label class="form-label">ملاحظاتك ورسالتك للعميل</label><textarea id="o-notes" class="form-control" rows="4" placeholder="اشرح مؤهلاتك وتجربتك المشابهة..." required></textarea></div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">ارسال العرض</button>
+                </form>
+            </div>`;
+            document.getElementById('offer-form').addEventListener('submit', submitOffer);
+        }
+    }
+
+    function submitOffer(e) {
+        e.preventDefault();
+        const newOffer = insertRecord(STORAGE_KEYS.OFFERS, {
+            requestId,
+            providerId: currentUser.id,
+            providerName: currentUser.fullName,
+            providerSpecialty: currentUser.specialty || currentUser.type,
+            providerAvatar: currentUser.avatar,
+            price: parseInt(document.getElementById('o-price').value),
+            duration: document.getElementById('o-duration').value,
+            arrivalTime: document.getElementById('o-arrival').value,
+            notes: document.getElementById('o-notes').value,
+            status: 'submitted'
+        });
+        insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+            userId: request.clientId,
+            title: 'عرض جديد لطلبك',
+            message: `قدم ${currentUser.fullName} عرضاً بقيمة ${formatNumber(newOffer.price)} ريال لطلبك.`,
+            link: `request-details.html?id=${requestId}`,
+            read: false
+        });
+        showToast('تم ارسال عرضك بنجاح!', 'success');
+        setTimeout(() => location.reload(), 600);
+    }
+
+    function acceptOffer(offerId, providerId) {
+        updateRecord(STORAGE_KEYS.REQUESTS, requestId, { status: 'IN_PROGRESS', selectedOfferId: offerId });
+        updateRecord(STORAGE_KEYS.OFFERS, offerId, { status: 'accepted' });
+        insertRecord(STORAGE_KEYS.MESSAGES, {
+            requestId,
+            senderId: 'SYSTEM',
+            content: 'تم قبول العرض وبدء مرحلة التنفيذ. جميع المحادثات مؤمنة داخل المنصة. يمنع تبادل بيانات تواصل خارجية.',
+            timestamp: new Date().toISOString()
+        });
+        insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+            userId: providerId,
+            title: 'تم قبول عرضك',
+            message: 'وافق العميل على عرضك. يمكنك الآن التواصل معه داخل المنصة.',
+            link: `request-details.html?id=${requestId}`,
+            read: false
+        });
+        showToast('تم قبول العرض! يمكنك الآن التواصل مع المزود.', 'success');
+        setTimeout(() => location.reload(), 700);
+    }
+
+    function cancelRequest() {
+        if (confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) {
+            updateRecord(STORAGE_KEYS.REQUESTS, requestId, { status: 'CANCELLED' });
+            showToast('تم إلغاء الطلب.', 'info');
+            setTimeout(() => location.reload(), 600);
+        }
+    }
+
+    function renderChat() {
+        document.getElementById('chat-section').style.display = 'block';
+        const msgs = getData(STORAGE_KEYS.MESSAGES)
+            .filter(m => m.requestId === requestId)
+            .sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
+        const container = document.getElementById('chat-messages');
+        container.innerHTML = msgs.map(m => {
+            if (m.senderId === 'SYSTEM') return `<div class="chat-bubble system-msg">${m.content || m.message}</div>`;
+            const isMine = m.senderId === currentUser?.id;
+            return `<div class="chat-bubble ${isMine ? 'mine' : 'theirs'}">${m.content || m.message}<span class="chat-time">${formatDate(m.timestamp || m.createdAt)}</span></div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (!text || !currentUser) return;
+        if (hasSensitiveContent(text)) { showToast('تحتوي رسالتك على بيانات محظورة (رقم هاتف أو رابط). يُمنع تبادل التواصل المباشر.', 'error', 5000); return; }
+        insertRecord(STORAGE_KEYS.MESSAGES, { requestId, senderId: currentUser.id, content: text, timestamp: new Date().toISOString() });
+        input.value = '';
+        renderChat();
+    }
+    </script>
+</body>
+</html>

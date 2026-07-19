@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم | Yemen Engineer</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/components.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+</head>
+<body>
+    <header id="site-header" class="site-header"></header>
+    <main class="container">
+        <div class="dashboard-layout">
+            <aside class="sidebar" id="sidebar"></aside>
+            <div>
+                <div class="stats-grid" id="stats-section"></div>
+                <div class="section-block">
+                    <h2 class="section-block-title">طلباتي ومشاريعي</h2>
+                    <div id="my-requests-list"></div>
+                </div>
+                <div class="section-block" id="notifications-block">
+                    <h2 class="section-block-title">آخر الاشعارات</h2>
+                    <div id="notifs-list"></div>
+                </div>
+
+                <div class="section-block" id="ads-campaigns-block" style="display:none;">
+                    <h2 class="section-block-title">إعلاناتي وحملاتي الممولة</h2>
+                    <div>
+                        <h3 style="font-size:1rem;margin-bottom:12px;font-weight:700;">حملاتي الإعلانية النشطة</h3>
+                        <div id="my-ads-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/app.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        buildSidebar(user);
+        buildStats(user);
+        buildRequests(user);
+        buildNotifs(user);
+        
+        // Show advertisement campaign tab for advertisers
+        if (['engineer','office','workshop','company','agent'].includes(user.type)) {
+            const adBlock = document.getElementById('ads-campaigns-block');
+            if (adBlock) adBlock.style.display = 'block';
+            buildMyAds(user);
+        }
+    });
+
+    function buildSidebar(user) {
+        const roleMap = { client:'عميل', engineer:'مهندس', office:'مكتب هندسي', workshop:'ورشة فنية', agent:'وكيل معتمد', admin:'مدير النظام' };
+        const links = [
+            { href: 'dashboard.html', text: 'لوحة التحكم' },
+            { href: 'profile.html', text: 'إعدادات الحساب' },
+            { href: 'notifications.html', text: 'الاشعارات' },
+        ];
+        if (['engineer','office','workshop','company'].includes(user.type)) links.splice(2, 0, { href: 'engineers.html', text: 'ملفي العام' });
+        if (user.type === 'agent') links.splice(2, 0, { href: `store-details.html?id=${user.storeId}`, text: 'معرضي' });
+        if (user.type === 'admin') links.push({ href: 'admin/index.html', text: 'لوحة الادارة' });
+
+        document.getElementById('sidebar').innerHTML = `
+            <div class="sidebar-header">
+                <img src="${user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" class="sidebar-avatar">
+                <div class="sidebar-name">${user.fullName}</div>
+                <div class="sidebar-role">${roleMap[user.type] || user.type}</div>
+            </div>
+            <nav class="sidebar-nav">
+                ${links.map(l => `<a href="${l.href}" class="sidebar-link ${window.location.href.includes(l.href) ? 'active' : ''}">${l.text}</a>`).join('')}
+                <a href="#" class="sidebar-logout" onclick="logout();return false;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    تسجيل الخروج
+                </a>
+            </nav>`;
+    }
+
+    function buildStats(user) {
+        const requests = getData(STORAGE_KEYS.REQUESTS);
+        const myRequests = requests.filter(r => r.clientId === user.id || r.providerId === user.id);
+        const inProgress = myRequests.filter(r => r.status === 'IN_PROGRESS').length;
+        const completed = myRequests.filter(r => r.status === 'COMPLETED').length;
+        const notifs = getData(STORAGE_KEYS.NOTIFICATIONS).filter(n => n.userId === user.id && !n.read).length;
+
+        const stats = [
+            { icon: 'T', label: 'إجمالي الطلبات', val: myRequests.length, cls: 'primary' },
+            { icon: 'P', label: 'جارٍ التنفيذ', val: inProgress, cls: 'warning' },
+            { icon: 'C', label: 'مكتملة', val: completed, cls: 'success' },
+            { icon: 'N', label: 'اشعارات جديدة', val: notifs, cls: 'secondary' },
+        ];
+
+        document.getElementById('stats-section').innerHTML = stats.map(s => `
+            <div class="stat-card">
+                <div class="stat-icon ${s.cls}">${s.icon}</div>
+                <div><div class="stat-number">${s.val}</div><div class="stat-label">${s.label}</div></div>
+            </div>`).join('');
+    }
+
+    function buildRequests(user) {
+        const requests = getData(STORAGE_KEYS.REQUESTS);
+        const mine = requests.filter(r => r.clientId === user.id).slice(0, 5);
+        const container = document.getElementById('my-requests-list');
+        if (!mine.length) { container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;">لا توجد طلبات بعد. <a href="post-request.html" style="color:var(--primary-color);font-weight:700;">انشر طلبك الأول</a></p>'; return; }
+        container.innerHTML = mine.map(r => {
+            const s = getStatusLabel(r.status);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-color);">
+                <div>
+                    <div style="font-weight:700;font-size:.92rem;">${r.title}</div>
+                    <div style="font-size:.78rem;color:var(--text-muted);">${formatDate(r.createdAt)}</div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <span class="badge ${s.cls}">${s.text}</span>
+                    <a href="request-details.html?id=${r.id}" class="btn btn-outline btn-sm">تفاصيل</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function buildNotifs(user) {
+        const notifs = getData(STORAGE_KEYS.NOTIFICATIONS)
+            .filter(n => n.userId === user.id)
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+            .slice(0, 5);
+        const container = document.getElementById('notifs-list');
+        if (!notifs.length) { container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;">لا توجد اشعارات.</p>'; return; }
+        container.innerHTML = notifs.map(n => `
+            <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-color);cursor:pointer;" onclick="window.location.href='${n.link}'">
+                <div style="width:36px;height:36px;border-radius:50%;background:${n.read ? '#f0f0f0' : 'rgba(15,76,92,.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--primary-color);">N</div>
+                <div>
+                    <div style="font-weight:${n.read ? '600' : '800'};font-size:.88rem;">${n.title}</div>
+                    <div style="font-size:.78rem;color:var(--text-muted);">${n.message.substring(0, 80)}...</div>
+                </div>
+            </div>`).join('');
+    }
+
+    function buildMyAds(user) {
+        const ads = getData(STORAGE_KEYS.ADS).filter(a => a.advertiserId === user.id);
+        const container = document.getElementById('my-ads-list');
+        if (!ads.length) {
+            container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">لا توجد حملات إعلانية نشطة أو معلقة حالياً.</p>';
+            return;
+        }
+        const statusMap = {
+            active: { text:'نشط', cls:'badge-success' },
+            pending: { text:'قيد المراجعة', cls:'badge-pending' },
+            completed: { text:'منتهي', cls:'badge-secondary' },
+            paused: { text:'موقوف مؤقتاً', cls:'badge-danger' }
+        };
+        container.innerHTML = ads.map(a => {
+            const status = statusMap[a.status] || { text: a.status, cls: 'badge-secondary' };
+            const spent = a.pricingModel === 'CPC' 
+                ? ((a.clicks || 0) * (a.cpcRate || 150))
+                : Math.floor(((a.views || 0) * (a.cpmRate || 2500)) / 1000);
+            return `
+            <div style="padding:16px;border:1px solid var(--border-color);border-radius:var(--border-radius-sm);background:#fafafa;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-weight:700;font-size:.9rem;color:var(--dark-color);">${a.title}</span>
+                    <span class="badge ${status.cls}">${status.text}</span>
+                </div>
+                <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px;">نوع: ${a.type === 'banner' ? 'بنر عريض' : 'بنر جانبي'} | نموذج: ${a.pricingModel} | ميزانية: ${formatNumber(a.budget)} ريال</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:.8rem;background:#fff;padding:8px;border-radius:var(--border-radius-sm);border:1.5px solid var(--border-color);text-align:center;">
+                    <div>المشاهدات<br><strong style="font-size:1.02rem;">${a.views || 0}</strong></div>
+                    <div>النقرات<br><strong style="font-size:1.02rem;">${a.clicks || 0}</strong></div>
+                    <div>الإنفاق<br><strong style="font-size:1.02rem;color:var(--primary-color);">${formatNumber(spent)} ريال</strong></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function handleCreateAd(e) {
+        e.preventDefault();
+        const user = getCurrentUser();
+        const title = document.getElementById('ad-title').value;
+        const description = document.getElementById('ad-desc').value;
+        const image = document.getElementById('ad-image').value;
+        const type = document.getElementById('ad-type').value;
+        const pricingModel = document.getElementById('ad-model').value;
+        const budget = Number(document.getElementById('ad-budget').value);
+
+        const link = user.type === 'agent' 
+            ? `store-details.html?id=${user.storeId}` 
+            : `engineer-details.html?id=${user.id}`;
+
+        insertRecord(STORAGE_KEYS.ADS, {
+            advertiserId: user.id,
+            title,
+            description,
+            image,
+            link,
+            budget,
+            type,
+            clicks: 0,
+            views: 0,
+            pricingModel,
+            cpcRate: 150,
+            cpmRate: 2500,
+            status: 'pending'
+        });
+
+        showToast('تم إرسال طلب الحملة الإعلانية بنجاح! بانتظار موافقة الإدارة.', 'success');
+        document.getElementById('new-ad-form').reset();
+        buildMyAds(user);
+    }
+    </script>
+</body>
+</html>

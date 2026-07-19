@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة | Yemen Engineer</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
+    <style>
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .admin-card { background: #fff; border: 1.5px solid var(--border-color); border-radius: var(--border-radius); padding: 20px; text-align: center; }
+        .admin-card-number { font-size: 2rem; font-weight: 800; color: var(--primary-color); margin-bottom: 5px; }
+        .admin-card-label { font-size: .88rem; color: var(--text-muted); font-weight: 700; }
+        .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border-color); margin-bottom: 24px; }
+        .tab-btn { padding: 12px 20px; border: none; background: none; font-family: inherit; font-size: .88rem; font-weight: 700; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .action-cell { display: flex; gap: 6px; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="../index.html" class="logo">
+                <span class="logo-main">مهندسي اليمن</span>
+                <span class="logo-sub">لوحة الإدارة</span>
+            </a>
+            <div class="header-actions">
+                <span id="admin-name" style="font-weight:700;font-size:.88rem;color:var(--dark-color);">المدير العام</span>
+                <a href="#" onclick="handleLogout()" class="btn btn-danger btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    خروج
+                </a>
+            </div>
+        </div>
+    </header>
+    <main class="container page-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+            <h1 style="font-size:1.5rem;font-weight:800;">لوحة إدارة المنصة الكليّة</h1>
+            <button onclick="localStorage.clear();location.reload();" class="btn btn-danger btn-sm">إعادة تهيئة البيانات (Reset)</button>
+        </div>
+
+        <div class="admin-grid">
+            <div class="admin-card"><div class="admin-card-number" id="c-users">0</div><div class="admin-card-label">إجمالي الأعضاء</div></div>
+            <div class="admin-card"><div class="admin-card-number" id="c-requests">0</div><div class="admin-card-label">الطلبات الكلية</div></div>
+            <div class="admin-card"><div class="admin-card-number" id="c-ads">0</div><div class="admin-card-label">حملات إعلانية</div></div>
+            <div class="admin-card"><div class="admin-card-number" style="color:#198754;" id="c-earnings">0 ريال</div><div class="admin-card-label">الأرباح التقديرية</div></div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('users')">المستخدمين</button>
+            <button class="tab-btn" onclick="switchTab('requests')">الطلبات</button>
+            <button class="tab-btn" onclick="switchTab('stores')">المتاجر والمعارض</button>
+            <button class="tab-btn" onclick="switchTab('ads')">الإعلانات والتمويل</button>
+        </div>
+
+        <div class="section-block">
+            <div id="users-tab" class="tab-content">
+                <h2 class="section-block-title">إدارة حسابات الأعضاء</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>الاسم</th><th>البريد الإلكتروني</th><th>النوع</th><th>الموقع</th><th>الحالة</th><th>التوثيق</th><th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="requests-tab" class="tab-content" style="display:none;">
+                <h2 class="section-block-title">المشاريع والمناقصات الهندسية</h2>
+
+                <!-- Admin-Only Project Creation Form -->
+                <div style="background:#f4f6f9;border:1.5px solid var(--border-color);border-radius:var(--border-radius);padding:24px;margin-bottom:28px;">
+                    <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px;color:var(--primary-color);">إضافة مشروع / مناقصة جديدة (مدير النظام)</h3>
+                    <form id="admin-req-form" onsubmit="createRequest(event)" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end;">
+                        <div style="grid-column:1 / -1;">
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">عنوان المشروع / المناقصة</label>
+                            <input type="text" id="req-title" class="form-control" placeholder="مثال: مناقصة تركيب شبكة طاقة شمسية للمستشفى" required style="height:38px;">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">التصنيف</label>
+                            <select id="req-category" class="form-control" style="height:38px;">
+                                <option>طاقة شمسية</option><option>معماري</option><option>مدني وإنشاءات</option>
+                                <option>ميكانيكا</option><option>تكييف وتبريد</option><option>شبكات واتصالات</option>
+                                <option>مساحة</option><option>استشارات هندسية</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">المحافظة</label>
+                            <select id="req-gov" class="form-control" style="height:38px;">
+                                <option>صنعاء</option><option>عدن</option><option>تعز</option><option>حضرموت</option>
+                                <option>الحديدة</option><option>إب</option><option>ذمار</option><option>مارب</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">المدينة / الحي</label>
+                            <input type="text" id="req-city" class="form-control" placeholder="مثال: المعلا" style="height:38px;">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">الميزانية (ريال يمني)</label>
+                            <input type="number" id="req-budget" class="form-control" placeholder="مثال: 2000000" min="0" style="height:38px;">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">المدة المتوقعة للتنفيذ</label>
+                            <input type="text" id="req-duration" class="form-control" placeholder="مثال: 3 أشهر" style="height:38px;">
+                        </div>
+                        <div style="grid-column:1 / -1;">
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">وصف تفصيلي</label>
+                            <textarea id="req-desc" class="form-control" placeholder="اشرح متطلبات المشروع أو المناقصة بالتفصيل..." required style="height:70px;resize:none;"></textarea>
+                        </div>
+                        <div style="grid-column:1 / -1;">
+                            <button type="submit" class="btn btn-primary" style="width:100%;">نشر المشروع / المناقصة فوراً</button>
+                        </div>
+                    </form>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>العنوان</th><th>العميل</th><th>الميزانية</th><th>الحالة</th><th>التاريخ</th><th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="stores-tab" class="tab-content" style="display:none;">
+                <h2 class="section-block-title">المتاجر والوكلاء</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>المتجر</th><th>الوكيل</th><th>المحافظة</th><th>العلامات التجارية</th><th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stores-table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="ads-tab" class="tab-content" style="display:none;">
+                <h2 class="section-block-title">إدارة الحملات الإعلانية ومراقبة الأرباح</h2>
+
+                <!-- Create New Ad Form (Admin Only) -->
+                <div style="background:#f4f6f9;border:1.5px solid var(--border-color);border-radius:var(--border-radius);padding:24px;margin-bottom:28px;">
+                    <h3 style="font-size:1rem;font-weight:800;margin-bottom:16px;color:var(--primary-color);">إنشاء إعلان جديد (مدير النظام)</h3>
+                    <form id="admin-new-ad-form" onsubmit="createAd(event)" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end;">
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">عنوان الإعلان</label>
+                            <input type="text" id="a-ad-title" class="form-control" placeholder="عنوان البنر الإعلاني" required style="height:38px;">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">رابط الصورة الترويجية (URL)</label>
+                            <input type="url" id="a-ad-image" class="form-control" placeholder="https://..." required style="height:38px;">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">رابط الوجهة (URL)</label>
+                            <input type="url" id="a-ad-link" class="form-control" placeholder="رابط صفحة المعلن..." required style="height:38px;">
+                        </div>
+                        <div style="grid-column:1 / -1;">
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">وصف الإعلان</label>
+                            <textarea id="a-ad-desc" class="form-control" placeholder="وصف المنتج أو الخدمة المعروضة للزوار" required style="height:56px;resize:none;"></textarea>
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">نوع الإعلان</label>
+                            <select id="a-ad-type" class="form-control" style="height:38px;">
+                                <option value="banner">بنر عريض (Banner)</option>
+                                <option value="sidebar">بنر جانبي (Sidebar)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">نموذج الحساب</label>
+                            <select id="a-ad-model" class="form-control" style="height:38px;">
+                                <option value="CPC">CPC - بالنقرة (150 ريال)</option>
+                                <option value="CPM">CPM - لكل ألف ظهور (2500 ريال)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;font-weight:700;display:block;margin-bottom:4px;">الميزانية (ريال)</label>
+                            <input type="number" id="a-ad-budget" class="form-control" placeholder="مثال: 50000" required style="height:38px;">
+                        </div>
+                        <div style="grid-column:1 / -1;">
+                            <button type="submit" class="btn btn-primary" style="width:100%;">نشر الإعلان فوراً</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Ads Table -->
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>المعلن</th><th>عنوان الإعلان</th><th>النوع</th><th>النموذج</th><th>المشاهدات</th><th>النقرات</th><th>الإنفاق</th><th>الحالة</th><th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ads-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>&copy; 2026 لوحة الإدارة الآمنة لمنصة مهندسي اليمن.</p>
+        </div>
+    </footer>
+
+    <script>
+    // Minimal mock function replication since config paths might differ
+    function getStorage(key) {
+        return JSON.parse(localStorage.getItem(key) || '[]');
+    }
+    function saveStorage(key, val) {
+        localStorage.setItem(key, JSON.stringify(val));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Authenticate admin
+        const cur = JSON.parse(localStorage.getItem('ye_current_user') || 'null');
+        if (!cur || cur.type !== 'admin') {
+            alert('غير مصرح لك بدخول لوحة الإدارة');
+            window.location.href = '../login.html';
+            return;
+        }
+        document.getElementById('admin-name').textContent = cur.fullName;
+
+        loadStats();
+        renderTabUsers();
+    });
+
+    function handleLogout() {
+        localStorage.removeItem('ye_current_user');
+        window.location.href = '../login.html';
+    }
+
+    function loadStats() {
+        const u = getStorage('ye_users');
+        const r = getStorage('ye_requests');
+        const ads = getStorage('ye_ads');
+        
+        let totalEarnings = 0;
+        ads.forEach(ad => {
+            if (ad.pricingModel === 'CPC') {
+                totalEarnings += ((ad.clicks || 0) * (ad.cpcRate || 150));
+            } else {
+                totalEarnings += Math.floor(((ad.views || 0) * (ad.cpmRate || 2500)) / 1000);
+            }
+        });
+
+        document.getElementById('c-users').textContent = u.length;
+        document.getElementById('c-requests').textContent = r.length;
+        document.getElementById('c-ads').textContent = ads.length;
+        document.getElementById('c-earnings').textContent = totalEarnings.toLocaleString() + ' ريال';
+    }
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        event.target.classList.add('active');
+        document.getElementById(`${tab}-tab`).style.display = 'block';
+
+        if (tab === 'users') renderTabUsers();
+        else if (tab === 'requests') renderTabRequests();
+        else if (tab === 'stores') renderTabStores();
+        else if (tab === 'ads') renderTabAds();
+    }
+
+    function renderTabUsers() {
+        const users = getStorage('ye_users');
+        const roleLabels = { client:'عميل', engineer:'مهندس', office:'مكتب هندسي', workshop:'ورشة فنية', agent:'وكيل', admin:'مدير' };
+        const body = document.getElementById('users-table-body');
+        body.innerHTML = users.map(u => `
+            <tr>
+                <td style="font-weight:700;">${u.fullName}</td>
+                <td>${u.email}</td>
+                <td>${roleLabels[u.type] || u.type}</td>
+                <td>${u.governorate}</td>
+                <td><span class="badge ${u.status==='approved'?'badge-success':'badge-pending'}">${u.status || 'نشط'}</span></td>
+                <td><span class="badge ${u.isVerified?'badge-success':'badge-pending'}">${u.isVerified?'موثق':'قيد المراجع'}</span></td>
+                <td class="action-cell">
+                    ${!u.isVerified ? `<button onclick="toggleVerifyUser('${u.id}', true)" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:.78rem;">توثيق</button>` : `<button onclick="toggleVerifyUser('${u.id}', false)" class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:.78rem;">إلغاء توثيق</button>`}
+                    <button onclick="deleteUser('${u.id}')" class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:.78rem;">حذف</button>
+                </td>
+            </tr>`).join('');
+    }
+
+    function renderTabRequests() {
+        const reqs = getStorage('ye_requests');
+        const users = getStorage('ye_users');
+        const body = document.getElementById('requests-table-body');
+        body.innerHTML = reqs.map(r => {
+            const client = users.find(u => u.id === r.clientId) || {};
+            const statusLabels = { NEW:'جديد (مفتوح)', IN_PROGRESS:'قيد التنفيذ', COMPLETED:'مكتمل', CANCELLED:'ملغي' };
+            const statusCls = { NEW:'badge-primary', IN_PROGRESS:'badge-warning', COMPLETED:'badge-success', CANCELLED:'badge-danger' };
+            return `
+            <tr>
+                <td style="font-weight:700;">${r.title}</td>
+                <td>${client.fullName || r.clientId}</td>
+                <td>${r.budget.toLocaleString()} ريال</td>
+                <td><span class="badge ${statusCls[r.status] || 'badge-pending'}">${statusLabels[r.status] || r.status}</span></td>
+                <td>${new Date(r.createdAt || r.registeredAt).toLocaleDateString('ar-YE')}</td>
+                <td class="action-cell">
+                    <a href="../request-details.html?id=${r.id}" target="_blank" class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:.78rem;">عرض</a>
+                    <button onclick="deleteRequest('${r.id}')" class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:.78rem;">حذف</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderTabStores() {
+        const stores = getStorage('ye_stores');
+        const users = getStorage('ye_users');
+        const body = document.getElementById('stores-table-body');
+        body.innerHTML = stores.map(s => {
+            const agent = users.find(u => u.id === s.agentId) || {};
+            return `
+            <tr>
+                <td style="font-weight:700;">${s.storeName}</td>
+                <td>${agent.fullName || s.agentId}</td>
+                <td>${s.governorate}</td>
+                <td><span style="font-size:.8rem;">${(s.brands || []).join(' - ')}</span></td>
+                <td class="action-cell">
+                    <a href="../store-details.html?id=${s.id}" target="_blank" class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:.78rem;">زيارة</a>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function toggleVerifyUser(id, state) {
+        const u = getStorage('ye_users');
+        const idx = u.findIndex(user => user.id === id);
+        if (idx !== -1) {
+            u[idx].isVerified = state;
+            saveStorage('ye_users', u);
+            loadStats();
+            renderTabUsers();
+        }
+    }
+
+    function deleteUser(id) {
+        if (confirm('هل أنت متأكد من حذف هذا المستخدم نهائيا؟')) {
+            const u = getStorage('ye_users');
+            const filtered = u.filter(user => user.id !== id);
+            saveStorage('ye_users', filtered);
+            loadStats();
+            renderTabUsers();
+        }
+    }
+
+    function deleteRequest(id) {
+        if (confirm('هل أنت متأكد من حذف هذا الطلب نهائيا؟')) {
+            const r = getStorage('ye_requests');
+            const filtered = r.filter(req => req.id !== id);
+            saveStorage('ye_requests', filtered);
+            loadStats();
+            renderTabRequests();
+        }
+    }
+
+    function renderTabAds() {
+        const ads = getStorage('ye_ads');
+        const users = getStorage('ye_users');
+        const body = document.getElementById('ads-table-body');
+        
+        const statusMap = {
+            active: { text:'نشط', cls:'badge-success' },
+            pending: { text:'قيد المراجعة', cls:'badge-pending' },
+            completed: { text:'منتهي', cls:'badge-secondary' },
+            paused: { text:'موقوف', cls:'badge-danger' }
+        };
+        
+        body.innerHTML = ads.map(a => {
+            const advertiser = users.find(u => u.id === a.advertiserId) || { fullName: 'معلن خارجي' };
+            const status = statusMap[a.status] || { text: a.status, cls: 'badge-secondary' };
+            const spent = a.pricingModel === 'CPC' 
+                ? ((a.clicks || 0) * (a.cpcRate || 150))
+                : Math.floor(((a.views || 0) * (a.cpmRate || 2500)) / 1000);
+            
+            return `
+            <tr>
+                <td style="font-weight:700;">${advertiser.fullName}</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.title}</td>
+                <td>${a.type === 'banner' ? 'بنر عريض' : 'بنر جانبي'}</td>
+                <td>${a.pricingModel}</td>
+                <td>${a.views || 0}</td>
+                <td>${a.clicks || 0}</td>
+                <td style="font-weight:700;color:var(--primary-color);">${spent.toLocaleString()} ريال</td>
+                <td><span class="badge ${status.cls}">${status.text}</span></td>
+                <td class="action-cell">
+                    ${a.status === 'pending' ? `<button onclick="approveAd('${a.id}')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:.78rem;">تفعيل</button>` : ''}
+                    ${a.status === 'active' ? `<button onclick="togglePauseAd('${a.id}', 'paused')" class="btn btn-outline btn-sm" style="padding:4px 8px;font-size:.78rem;">إيقاف</button>` : ''}
+                    ${a.status === 'paused' ? `<button onclick="togglePauseAd('${a.id}', 'active')" class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:.78rem;">تشغيل</button>` : ''}
+                    <button onclick="deleteAd('${a.id}')" class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:.78rem;">حذف</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function approveAd(id) {
+        const ads = getStorage('ye_ads');
+        const idx = ads.findIndex(a => a.id === id);
+        if (idx !== -1) {
+            ads[idx].status = 'active';
+            saveStorage('ye_ads', ads);
+            loadStats();
+            renderTabAds();
+        }
+    }
+
+    function togglePauseAd(id, newStatus) {
+        const ads = getStorage('ye_ads');
+        const idx = ads.findIndex(a => a.id === id);
+        if (idx !== -1) {
+            ads[idx].status = newStatus;
+            saveStorage('ye_ads', ads);
+            loadStats();
+            renderTabAds();
+        }
+    }
+
+    function deleteAd(id) {
+        if (confirm('هل أنت متأكد من حذف هذا الإعلان نهائياً؟')) {
+            const ads = getStorage('ye_ads');
+            const filtered = ads.filter(a => a.id !== id);
+            saveStorage('ye_ads', filtered);
+            loadStats();
+            renderTabAds();
+        }
+    }
+
+    function createAd(e) {
+        e.preventDefault();
+        const title = document.getElementById('a-ad-title').value.trim();
+        const description = document.getElementById('a-ad-desc').value.trim();
+        const image = document.getElementById('a-ad-image').value.trim();
+        const link = document.getElementById('a-ad-link').value.trim();
+        const type = document.getElementById('a-ad-type').value;
+        const pricingModel = document.getElementById('a-ad-model').value;
+        const budget = Number(document.getElementById('a-ad-budget').value);
+
+        const ads = getStorage('ye_ads');
+        const newAd = {
+            id: 'ad_' + Date.now(),
+            advertiserId: 'admin',
+            title,
+            description,
+            image,
+            link,
+            budget,
+            type,
+            clicks: 0,
+            views: 0,
+            pricingModel,
+            cpcRate: 150,
+            cpmRate: 2500,
+            status: 'active',
+            createdAt: new Date().toISOString()
+        };
+        ads.push(newAd);
+        saveStorage('ye_ads', ads);
+
+        document.getElementById('admin-new-ad-form').reset();
+        loadStats();
+        renderTabAds();
+        alert('تم نشر الإعلان بنجاح وهو نشط الآن على المنصة!');
+    }
+
+    function createRequest(e) {
+        e.preventDefault();
+        const title    = document.getElementById('req-title').value.trim();
+        const category = document.getElementById('req-category').value;
+        const gov      = document.getElementById('req-gov').value;
+        const city     = document.getElementById('req-city').value.trim();
+        const budget   = parseInt(document.getElementById('req-budget').value) || 0;
+        const duration = document.getElementById('req-duration').value.trim();
+        const desc     = document.getElementById('req-desc').value.trim();
+
+        const requests = getStorage('ye_requests');
+        const newReq = {
+            id: 'req_' + Date.now(),
+            clientId: 'admin',
+            title,
+            category,
+            description: desc,
+            governorate: gov,
+            city,
+            location: '',
+            budget,
+            duration,
+            status: 'NEW',
+            images: [],
+            registeredAt: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        };
+        requests.push(newReq);
+        saveStorage('ye_requests', requests);
+
+        document.getElementById('admin-req-form').reset();
+        loadStats();
+        renderTabRequests();
+        alert('تم نشر المشروع / المناقصة بنجاح وهو متاح الآن للمهندسين!');
+    }
+    </script>
+</body>
+</html>
