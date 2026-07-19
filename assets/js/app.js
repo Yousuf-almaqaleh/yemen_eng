@@ -313,6 +313,16 @@ document.addEventListener('DOMContentLoaded', () => {
     injectGlobalLayouts();
     renderAllAds();
     initAdSliders();
+    
+    // Inject Vercel Web Analytics (exclude localhost)
+    if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        const script = document.createElement('script');
+        script.src = '/_vercel/insights/script.js';
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+
     // Animate items
     document.querySelectorAll('.animate-item').forEach((el, i) => {
         el.style.opacity = '0';
