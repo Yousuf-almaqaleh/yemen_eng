@@ -137,7 +137,7 @@ function initDatabase() {
         },
         {
             id: 'u_eng1',
-            fullName: 'أحمد علي الهمداني',
+            fullName: 'أحمد علي الحضرمي',
             email: 'ahmed@yemeneng.com',
             password: 'password',
             phone: '777333444',
@@ -179,8 +179,8 @@ function initDatabase() {
         },
         {
             id: 'u_eng3',
-            fullName: 'عمر حسين المقالح',
-            email: 'maqaleh@yemeneng.com',
+            fullName: 'عمر حسين الوصابي',
+            email: 'wasabi@yemeneng.com',
             password: 'password',
             phone: '777555666',
             type: 'engineer',
@@ -445,7 +445,7 @@ function initDatabase() {
             id: 'off_200',
             requestId: 'req_100',
             providerId: 'u_eng1',
-            providerName: 'أحمد علي الهمداني',
+            providerName: 'أحمد علي الحضرمي',
             providerSpecialty: 'طاقة شمسية',
             providerAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
             price: 330000,
@@ -588,7 +588,7 @@ function initDatabase() {
         {
             id: 'ad_3',
             advertiserId: 'u_eng1',
-            title: 'عروض تركيب الطاقة الشمسية - م. أحمد الهمداني',
+            title: 'عروض تركيب الطاقة الشمسية - م. أحمد الحضرمي',
             description: 'احصل على استشارتك المجانية لتصميم منظومتك المنزلية بموثوقية عالية وخبرة هندسية تفوق 8 سنوات.',
             image: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400',
             link: 'engineer-details.html?id=u_eng1',
@@ -669,7 +669,7 @@ if (localStorage.getItem('ye_db_initialized') === 'true' && !localStorage.getIte
         {
             id: 'ad_3',
             advertiserId: 'u_eng1',
-            title: 'عروض تركيب الطاقة الشمسية - م. أحمد الهمداني',
+            title: 'عروض تركيب الطاقة الشمسية - م. أحمد الحضرمي',
             description: 'احصل على استشارتك المجانية لتصميم منظومتك المنزلية بموثوقية عالية وخبرة هندسية تفوق 8 سنوات.',
             image: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400',
             link: 'engineer-details.html?id=u_eng1',
