@@ -21,13 +21,14 @@
         <div id="stores-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;"></div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const stores = getData(STORAGE_KEYS.STORES);
-        const users = getData(STORAGE_KEYS.USERS);
+    document.addEventListener('DOMContentLoaded', async () => {
+        const stores = await getData(STORAGE_KEYS.STORES);
+        const users = await getData(STORAGE_KEYS.USERS);
         const container = document.getElementById('stores-grid');
         if (!stores.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد متاجر بعد</div></div>'; return; }
         container.innerHTML = stores.map(s => {

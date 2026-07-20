@@ -33,15 +33,7 @@
                 <p class="auth-sub">مرحباً بك في منصة مهندسي اليمن</p>
             </div>
 
-            <p style="font-size:.85rem;font-weight:700;margin-bottom:10px;color:var(--dark-color);">دخول تجريبي سريع:</p>
-            <div class="demo-grid">
-                <button class="demo-btn" onclick="handleDemoLogin('client')">عميل</button>
-                <button class="demo-btn" onclick="handleDemoLogin('engineer')">مهندس</button>
-                <button class="demo-btn" onclick="handleDemoLogin('agent')">وكيل</button>
-                <button class="demo-btn" onclick="handleDemoLogin('admin')">مدير النظام</button>
-            </div>
 
-            <div class="divider">أو ادخل ببياناتك</div>
 
             <div id="login-error" class="alert alert-danger" style="display:none;"></div>
             <form id="login-form">
@@ -59,26 +51,18 @@
         </div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     if (getCurrentUser()) window.location.href = 'dashboard.html';
 
-    function handleDemoLogin(role) {
-        const r = demoLogin(role);
-        if (r.success) {
-            showToast('تم تسجيل الدخول بنجاح!', 'success');
-            setTimeout(() => {
-                if (r.user.type === 'admin') window.location.href = 'admin/index.html';
-                else window.location.href = 'dashboard.html';
-            }, 500);
-        } else showToast(r.message, 'error');
-    }
 
-    document.getElementById('login-form').addEventListener('submit', e => {
+
+    document.getElementById('login-form').addEventListener('submit', async e => {
         e.preventDefault();
-        const r = login(document.getElementById('email').value, document.getElementById('password').value);
+        const r = await login(document.getElementById('email').value, document.getElementById('password').value);
         if (r.success) {
             showToast('تم تسجيل الدخول بنجاح!', 'success');
             setTimeout(() => {

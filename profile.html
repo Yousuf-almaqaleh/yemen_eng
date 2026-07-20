@@ -65,7 +65,7 @@
 </head>
 <body>
     <header id="site-header" class="site-header"></header>
-    <main class="main-layout container" style="max-width:720px;">
+    <main class="main-layout container" style="max-width:720px; margin-right:0; margin-left:auto;">
         <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:24px;">إعدادات الحساب الشخصي</h1>
         <div id="save-success" class="alert alert-success" style="display:none;">تم حفظ التعديلات بنجاح!</div>
         <form id="profile-form">
@@ -110,6 +110,7 @@
         </form>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
@@ -212,7 +213,7 @@
         renderDocList();
     }
 
-    document.getElementById('profile-form').addEventListener('submit', e => {
+    document.getElementById('profile-form').addEventListener('submit', async e => {
         e.preventDefault();
         const user = getCurrentUser();
         const updates = {
@@ -230,7 +231,7 @@
 
         if (user.type !== 'client') updates.documents = uploadedDocs;
 
-        const updated = updateRecord(STORAGE_KEYS.USERS, user.id, updates);
+        const updated = await updateRecord(STORAGE_KEYS.USERS, user.id, updates);
         if (updated) {
             setCurrentUser({ ...user, ...updates });
             document.getElementById('save-success').style.display = 'block';

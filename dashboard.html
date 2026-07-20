@@ -15,43 +15,42 @@
             <aside class="sidebar" id="sidebar"></aside>
             <div>
                 <div class="stats-grid" id="stats-section"></div>
-                <div class="section-block">
-                    <h2 class="section-block-title">طلباتي ومشاريعي</h2>
-                    <div id="my-requests-list"></div>
-                </div>
-                <div class="section-block" id="notifications-block">
-                    <h2 class="section-block-title">آخر الاشعارات</h2>
-                    <div id="notifs-list"></div>
-                </div>
-
-                <div class="section-block" id="ads-campaigns-block" style="display:none;">
-                    <h2 class="section-block-title">إعلاناتي وحملاتي الممولة</h2>
-                    <div>
-                        <h3 style="font-size:1rem;margin-bottom:12px;font-weight:700;">حملاتي الإعلانية النشطة</h3>
-                        <div id="my-ads-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+                
+                <div class="dashboard-sections-grid">
+                    <div class="section-block" style="margin-bottom: 0;">
+                        <h2 class="section-block-title">طلباتي ومشاريعي</h2>
+                        <div id="my-requests-list"></div>
+                    </div>
+                    <div class="section-block" id="ads-campaigns-block" style="display:none; margin-bottom: 0;">
+                        <h2 class="section-block-title">إعلاناتي وحملاتي الممولة</h2>
+                        <div>
+                            <h3 style="font-size:1rem;margin-bottom:12px;font-weight:700;">حملاتي الإعلانية النشطة</h3>
+                            <div id="my-ads-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const user = getCurrentUser();
         if (!user) { window.location.href = 'login.html'; return; }
         buildSidebar(user);
-        buildStats(user);
-        buildRequests(user);
-        buildNotifs(user);
+        await buildStats(user);
+        await buildRequests(user);
+        await buildNotifs(user);
         
         // Show advertisement campaign tab for advertisers
         if (['engineer','office','workshop','company','agent'].includes(user.type)) {
             const adBlock = document.getElementById('ads-campaigns-block');
             if (adBlock) adBlock.style.display = 'block';
-            buildMyAds(user);
+            await buildMyAds(user);
         }
     });
 
@@ -59,8 +58,7 @@
         const roleMap = { client:'عميل', engineer:'مهندس', office:'مكتب هندسي', workshop:'ورشة فنية', agent:'وكيل معتمد', admin:'مدير النظام' };
         const links = [
             { href: 'dashboard.html', text: 'لوحة التحكم' },
-            { href: 'profile.html', text: 'إعدادات الحساب' },
-            { href: 'notifications.html', text: 'الاشعارات' },
+            { href: 'profile.html', text: 'إعدادات الحساب' }
         ];
         if (['engineer','office','workshop','company'].includes(user.type)) links.splice(2, 0, { href: 'engineers.html', text: 'ملفي العام' });
         if (user.type === 'agent') links.splice(2, 0, { href: `store-details.html?id=${user.storeId}`, text: 'معرضي' });
@@ -69,8 +67,10 @@
         document.getElementById('sidebar').innerHTML = `
             <div class="sidebar-header">
                 <img src="${user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" class="sidebar-avatar">
-                <div class="sidebar-name">${user.fullName}</div>
-                <div class="sidebar-role">${roleMap[user.type] || user.type}</div>
+                <div class="sidebar-info">
+                    <div class="sidebar-name">${user.fullName}</div>
+                    <div class="sidebar-role">${roleMap[user.type] || user.type}</div>
+                </div>
             </div>
             <nav class="sidebar-nav">
                 ${links.map(l => `<a href="${l.href}" class="sidebar-link ${window.location.href.includes(l.href) ? 'active' : ''}">${l.text}</a>`).join('')}
@@ -81,18 +81,18 @@
             </nav>`;
     }
 
-    function buildStats(user) {
-        const requests = getData(STORAGE_KEYS.REQUESTS);
+    async function buildStats(user) {
+        const requests = await getData(STORAGE_KEYS.REQUESTS);
         const myRequests = requests.filter(r => r.clientId === user.id || r.providerId === user.id);
         const inProgress = myRequests.filter(r => r.status === 'IN_PROGRESS').length;
         const completed = myRequests.filter(r => r.status === 'COMPLETED').length;
-        const notifs = getData(STORAGE_KEYS.NOTIFICATIONS).filter(n => n.userId === user.id && !n.read).length;
+        const allNotifs = await getData(STORAGE_KEYS.NOTIFICATIONS);
+        const notifs = allNotifs.filter(n => n.userId === user.id && !n.read).length;
 
         const stats = [
             { icon: 'T', label: 'إجمالي الطلبات', val: myRequests.length, cls: 'primary' },
             { icon: 'P', label: 'جارٍ التنفيذ', val: inProgress, cls: 'warning' },
             { icon: 'C', label: 'مكتملة', val: completed, cls: 'success' },
-            { icon: 'N', label: 'اشعارات جديدة', val: notifs, cls: 'secondary' },
         ];
 
         document.getElementById('stats-section').innerHTML = stats.map(s => `
@@ -102,8 +102,8 @@
             </div>`).join('');
     }
 
-    function buildRequests(user) {
-        const requests = getData(STORAGE_KEYS.REQUESTS);
+    async function buildRequests(user) {
+        const requests = await getData(STORAGE_KEYS.REQUESTS);
         const mine = requests.filter(r => r.clientId === user.id).slice(0, 5);
         const container = document.getElementById('my-requests-list');
         if (!mine.length) { container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;">لا توجد طلبات بعد. <a href="post-request.html" style="color:var(--primary-color);font-weight:700;">انشر طلبك الأول</a></p>'; return; }
@@ -122,8 +122,8 @@
         }).join('');
     }
 
-    function buildNotifs(user) {
-        const notifs = getData(STORAGE_KEYS.NOTIFICATIONS)
+    async function buildNotifs(user) {
+        const notifs = (await getData(STORAGE_KEYS.NOTIFICATIONS))
             .filter(n => n.userId === user.id)
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
             .slice(0, 5);
@@ -134,13 +134,14 @@
                 <div style="width:36px;height:36px;border-radius:50%;background:${n.read ? '#f0f0f0' : 'rgba(15,76,92,.1)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--primary-color);">N</div>
                 <div>
                     <div style="font-weight:${n.read ? '600' : '800'};font-size:.88rem;">${n.title}</div>
-                    <div style="font-size:.78rem;color:var(--text-muted);">${n.message.substring(0, 80)}...</div>
+                    <div style="font-size:.78rem;color:var(--text-muted);">${(n.message || '').substring(0, 80)}...</div>
                 </div>
             </div>`).join('');
     }
 
-    function buildMyAds(user) {
-        const ads = getData(STORAGE_KEYS.ADS).filter(a => a.advertiserId === user.id);
+    async function buildMyAds(user) {
+        const allAds = await getData(STORAGE_KEYS.ADS);
+        const ads = allAds.filter(a => a.advertiserId === user.id);
         const container = document.getElementById('my-ads-list');
         if (!ads.length) {
             container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">لا توجد حملات إعلانية نشطة أو معلقة حالياً.</p>';
@@ -173,7 +174,7 @@
         }).join('');
     }
 
-    function handleCreateAd(e) {
+    async function handleCreateAd(e) {
         e.preventDefault();
         const user = getCurrentUser();
         const title = document.getElementById('ad-title').value;
@@ -187,7 +188,7 @@
             ? `store-details.html?id=${user.storeId}` 
             : `engineer-details.html?id=${user.id}`;
 
-        insertRecord(STORAGE_KEYS.ADS, {
+        await insertRecord(STORAGE_KEYS.ADS, {
             advertiserId: user.id,
             title,
             description,
@@ -205,7 +206,7 @@
 
         showToast('تم إرسال طلب الحملة الإعلانية بنجاح! بانتظار موافقة الإدارة.', 'success');
         document.getElementById('new-ad-form').reset();
-        buildMyAds(user);
+        await buildMyAds(user);
     }
     </script>
 </body>

@@ -15,14 +15,173 @@ const STORAGE_KEYS = {
     ADS: 'ye_ads'
 };
 
-// --- Core CRUD Helpers ---
+// --- Translations for Supabase Column Naming (CamelCase -> SnakeCase) ---
+const KEY_TRANSLATIONS = {
+    fullName: 'full_name',
+    licenseNumber: 'license_number',
+    experienceYears: 'experience_years',
+    isVerified: 'is_verified',
+    ratingCount: 'rating_count',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    priceRange: 'price_range',
+    countProviders: 'count_providers',
+    clientId: 'client_id',
+    serviceId: 'service_id',
+    requestType: 'request_type',
+    targetProviderId: 'target_provider_id',
+    selectedOfferId: 'selected_offer_id',
+    registeredAt: 'registered_at',
+    requestId: 'request_id',
+    providerId: 'provider_id',
+    providerName: 'provider_name',
+    providerSpecialty: 'provider_specialty',
+    providerAvatar: 'provider_avatar',
+    arrivalTime: 'arrival_time',
+    senderId: 'sender_id',
+    userId: 'user_id',
+    agentId: 'agent_id',
+    storeName: 'store_name',
+    storeId: 'store_id',
+    targetId: 'target_id',
+    reviewerName: 'reviewer_name',
+    advertiserId: 'advertiser_id',
+    pricingModel: 'pricing_model',
+    cpcRate: 'cpc_rate',
+    cpmRate: 'cpm_rate',
+    activityType: 'activity_type',
+    officeName: 'office_name',
+    workshopName: 'workshop_name',
+    companyName: 'company_name',
+    productTypes: 'product_types',
+    receiverId: 'receiver_id',
+    relatedUserTypes: 'related_user_types'
+};
 
-function getData(key) {
+const REVERSE_TRANSLATIONS = {};
+for (const [camel, snake] of Object.entries(KEY_TRANSLATIONS)) {
+    REVERSE_TRANSLATIONS[snake] = camel;
+}
+
+const TABLE_COLUMNS = {
+    'ye_users': [
+        'id', 'full_name', 'email', 'password', 'type', 'phone', 'governorate', 'city', 
+        'specialty', 'license_number', 'experience_years', 'bio', 'avatar', 'is_verified', 
+        'status', 'rating', 'rating_count', 'activity_type', 'office_name', 'workshop_name', 
+        'company_name', 'product_types', 'brands', 'store_id', 'documents', 'certificates', 
+        'created_at', 'updated_at'
+    ],
+    'ye_services': [
+        'id', 'name', 'category', 'description', 'image', 'price_range', 'count_providers', 
+        'related_user_types', 'created_at'
+    ],
+    'ye_requests': [
+        'id', 'client_id', 'service_id', 'request_type', 'target_provider_id', 'category', 
+        'title', 'description', 'governorate', 'city', 'location', 'budget', 'duration', 
+        'status', 'selected_offer_id', 'images', 'registered_at', 'created_at'
+    ],
+    'ye_offers': [
+        'id', 'request_id', 'provider_id', 'provider_name', 'provider_specialty', 
+        'provider_avatar', 'price', 'duration', 'arrival_time', 'notes', 'status', 'created_at'
+    ],
+    'ye_messages': [
+        'id', 'request_id', 'sender_id', 'receiver_id', 'content', 'timestamp', 'created_at'
+    ],
+    'ye_notifications': [
+        'id', 'user_id', 'title', 'message', 'link', 'read', 'created_at'
+    ],
+    'ye_stores': [
+        'id', 'agent_id', 'store_name', 'specialty', 'governorate', 'description', 'logo', 
+        'brands', 'created_at'
+    ],
+    'ye_products': [
+        'id', 'store_id', 'name', 'brand', 'specifications', 'price', 'image', 'created_at'
+    ],
+    'ye_reviews': [
+        'id', 'target_id', 'reviewer_name', 'rating', 'comment', 'created_at'
+    ],
+    'ye_ads': [
+        'id', 'advertiser_id', 'title', 'description', 'image', 'link', 'type', 'pricing_model', 
+        'budget', 'cpc_rate', 'cpm_rate', 'clicks', 'views', 'status', 'created_at'
+    ]
+};
+
+function mapToSnakeCase(obj, key) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const result = {};
+    const allowed = TABLE_COLUMNS[key];
+    for (const [k, val] of Object.entries(obj)) {
+        const translatedKey = KEY_TRANSLATIONS[k] || k;
+        if (allowed && !allowed.includes(translatedKey)) {
+            continue;
+        }
+        result[translatedKey] = val;
+    }
+    return result;
+}
+
+function mapToCamelCase(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const result = {};
+    for (const [key, val] of Object.entries(obj)) {
+        const translatedKey = REVERSE_TRANSLATIONS[key] || key;
+        result[translatedKey] = val;
+    }
+    return result;
+}
+
+// Map Local Storage keys to Supabase database tables
+const TABLE_MAP = {
+    'ye_users': 'ye_users',
+    'ye_services': 'ye_services',
+    'ye_requests': 'ye_requests',
+    'ye_offers': 'ye_offers',
+    'ye_messages': 'ye_messages',
+    'ye_notifications': 'ye_notifications',
+    'ye_stores': 'ye_stores',
+    'ye_products': 'ye_products',
+    'ye_reviews': 'ye_reviews',
+    'ye_ads': 'ye_ads'
+};
+
+async function getClient() {
+    if (typeof initSupabase === 'function') {
+        return await initSupabase();
+    }
+    return null;
+}
+
+// --- Core Database CRUD Operations (Async with Fallbacks) ---
+
+async function getData(key) {
+    const client = await getClient();
+    if (client) {
+        const table = TABLE_MAP[key];
+        if (table) {
+            const { data, error } = await client.from(table).select('*');
+            if (!error) {
+                return (data || []).map(record => mapToCamelCase(record));
+            }
+            console.error(`Supabase fetch failed for ${table}:`, error);
+        }
+    }
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
 }
 
-function saveData(key, data) {
+async function saveData(key, data) {
+    const client = await getClient();
+    if (client) {
+        const table = TABLE_MAP[key];
+        if (table) {
+            const dbData = (data || []).map(record => mapToSnakeCase(record, key));
+            const { error } = await client.from(table).upsert(dbData);
+            if (error) {
+                console.error(`Supabase upsert failed for ${table}:`, error);
+            }
+            return;
+        }
+    }
     localStorage.setItem(key, JSON.stringify(data));
 }
 
@@ -30,50 +189,92 @@ function generateId(prefix) {
     return prefix + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 }
 
-function insertRecord(key, data) {
-    const records = getData(key);
-    const newRecord = { id: generateId(key), createdAt: new Date().toISOString(), ...data };
+async function insertRecord(key, data) {
+    const client = await getClient();
+    const newId = generateId(key);
+    const newRecord = { id: newId, createdAt: new Date().toISOString(), ...data };
+    
+    if (client) {
+        const table = TABLE_MAP[key];
+        if (table) {
+            const dbRecord = mapToSnakeCase(newRecord, key);
+            const { data: inserted, error } = await client.from(table).insert([dbRecord]).select();
+            if (!error && inserted && inserted.length > 0) {
+                return mapToCamelCase(inserted[0]);
+            }
+            console.error(`Supabase insert failed for ${table}:`, error);
+        }
+    }
+    
+    const records = await getData(key);
     records.push(newRecord);
-    saveData(key, records);
+    await saveData(key, records);
     return newRecord;
 }
 
-function updateRecord(key, id, updates) {
-    const records = getData(key);
+async function updateRecord(key, id, updates) {
+    const client = await getClient();
+    if (client) {
+        const table = TABLE_MAP[key];
+        if (table) {
+            const dbUpdates = mapToSnakeCase(updates, key);
+            dbUpdates.updated_at = new Date().toISOString();
+            const { data: updated, error } = await client.from(table).update(dbUpdates).eq('id', id).select();
+            if (!error && updated && updated.length > 0) {
+                return mapToCamelCase(updated[0]);
+            }
+            console.error(`Supabase update failed for ${table}:`, error);
+        }
+    }
+    
+    const records = await getData(key);
     const idx = records.findIndex(r => r.id === id);
     if (idx !== -1) {
         records[idx] = { ...records[idx], ...updates, updatedAt: new Date().toISOString() };
-        saveData(key, records);
+        await saveData(key, records);
         return records[idx];
     }
     return null;
 }
 
-function deleteRecord(key, id) {
-    const records = getData(key);
+async function deleteRecord(key, id) {
+    const client = await getClient();
+    if (client) {
+        const table = TABLE_MAP[key];
+        if (table) {
+            const { error } = await client.from(table).delete().eq('id', id);
+            if (error) {
+                console.error(`Supabase delete failed for ${table}:`, error);
+            }
+            return;
+        }
+    }
+    
+    const records = await getData(key);
     const filtered = records.filter(r => r.id !== id);
-    saveData(key, filtered);
+    await saveData(key, filtered);
 }
 
-function getById(key, id) {
-    return getData(key).find(r => r.id === id) || null;
+async function getById(key, id) {
+    const data = await getData(key);
+    return data.find(r => r.id === id) || null;
 }
 
-function trackAdClick(adId) {
-    const ads = getData(STORAGE_KEYS.ADS);
+async function trackAdClick(adId) {
+    const ads = await getData(STORAGE_KEYS.ADS);
     const idx = ads.findIndex(a => a.id === adId);
     if (idx !== -1) {
-        ads[idx].clicks = (ads[idx].clicks || 0) + 1;
-        saveData(STORAGE_KEYS.ADS, ads);
+        const clicks = (ads[idx].clicks || 0) + 1;
+        await updateRecord(STORAGE_KEYS.ADS, adId, { clicks });
     }
 }
 
-function trackAdImpression(adId) {
-    const ads = getData(STORAGE_KEYS.ADS);
+async function trackAdImpression(adId) {
+    const ads = await getData(STORAGE_KEYS.ADS);
     const idx = ads.findIndex(a => a.id === adId);
     if (idx !== -1) {
-        ads[idx].views = (ads[idx].views || 0) + 1;
-        saveData(STORAGE_KEYS.ADS, ads);
+        const views = (ads[idx].views || 0) + 1;
+        await updateRecord(STORAGE_KEYS.ADS, adId, { views });
     }
 }
 
@@ -388,6 +589,7 @@ function initDatabase() {
             id: 'req_100',
             clientId: 'u_client1',
             serviceId: 'srv_1',
+            requestType: 'service',
             category: 'طاقة شمسية',
             title: 'تركيب منظومة طاقة شمسية منزلية 3 كيلووات مع منظم إضافي',
             description: 'أريد تركيب 6 ألواح طاقة شمسية 500 وات فوق سطح المنزل بسنح، والمنظومة تحتاج بطارية ليثيوم 100 أمبير مع تشغيل مكيف طن إنفيرتر في فترة النهار ومضخة ماء صغيرة نصف حصان.',
@@ -406,6 +608,7 @@ function initDatabase() {
             id: 'req_101',
             clientId: 'u_client2',
             serviceId: 'srv_2',
+            requestType: 'consultation',
             category: 'معماري',
             title: 'تصميم خارجي لفيلا من طراز صنعاني مهيب في مدينة المكلا',
             description: 'نمتلك أرضاً بمساحة 22 * 20 متر ونريد وضع سكتش أولي ثلاثي الأبعاد وتصميم للواجهة الخارجية بدمج الحجر الترافرتين الأبيض مع القمريات الصنعانية المزخرفة وتناسق النوافد.',
@@ -423,6 +626,7 @@ function initDatabase() {
             id: 'req_102',
             clientId: 'u_client1',
             serviceId: 'srv_7',
+            requestType: 'service',
             category: 'شبكات واتصالات',
             title: 'تصميم شبكة داخلية لمكتب تجاري من 12 جهاز وكاميرات مراقبة',
             description: 'أريد تأسيس شبكة داخلية للشركة تشمل توزيع الانترنت عبر سويتش مدار، وتركيب 6 كاميرات مراقبة إضافة إلى نقاط الواي فاي خارج الجدران.',
@@ -703,3 +907,30 @@ if (localStorage.getItem('ye_db_initialized') === 'true' && !localStorage.getIte
     ];
     saveData(STORAGE_KEYS.ADS, fallbackAds);
 }
+
+// Migration to ensure all existing requests have a requestType field
+(function migrateRequests() {
+    try {
+        const reqsRaw = localStorage.getItem(STORAGE_KEYS.REQUESTS);
+        if (reqsRaw) {
+            const reqs = JSON.parse(reqsRaw);
+            let updated = false;
+            reqs.forEach(r => {
+                if (!r.requestType) {
+                    if (r.id === 'req_101' || r.category === 'استشارات هندسية') {
+                        r.requestType = 'consultation';
+                    } else {
+                        r.requestType = 'service';
+                    }
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem(STORAGE_KEYS.REQUESTS, JSON.stringify(reqs));
+                console.log('Migration active: Updated existing requests with requestType field.');
+            }
+        }
+    } catch (e) {
+        console.error('Error migrating requests:', e);
+    }
+})();

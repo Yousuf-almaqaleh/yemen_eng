@@ -41,14 +41,16 @@ function showToast(message, type = 'info', duration = 3500) {
 }
 
 // --- Dynamic Header Injection ---
-function injectGlobalLayouts() {
+async function injectGlobalLayouts() {
     const currentUser = getCurrentUser();
     const isInAdmin = window.location.pathname.includes('/admin/');
     const basePath = isInAdmin ? '../' : '';
 
-    const unreadNotifs = currentUser
-        ? getData(STORAGE_KEYS.NOTIFICATIONS).filter(n => n.userId === currentUser.id && !n.read).length
-        : 0;
+    let unreadNotifs = 0;
+    if (currentUser) {
+        const notifs = await getData(STORAGE_KEYS.NOTIFICATIONS);
+        unreadNotifs = notifs.filter(n => n.userId === currentUser.id && !n.read).length;
+    }
 
     const notifBadge = unreadNotifs > 0 ? `<span class="notif-badge">${unreadNotifs}</span>` : '';
 
@@ -185,10 +187,14 @@ function getStatusLabel(status) {
     return map[status] || { text: status, cls: 'badge-secondary' };
 }
 
-function renderAllAds() {
-    document.querySelectorAll('.ad-placeholder').forEach(el => {
+async function renderAllAds() {
+    const placeholders = document.querySelectorAll('.ad-placeholder');
+    if (!placeholders.length) return;
+
+    const allAds = await getData(STORAGE_KEYS.ADS);
+    placeholders.forEach(el => {
         const type = el.getAttribute('data-ad-type') || 'banner';
-        const ads = getData(STORAGE_KEYS.ADS).filter(a => a.status === 'active' && a.type === type);
+        const ads = allAds.filter(a => a.status === 'active' && a.type === type);
         if (!ads.length) {
             el.style.display = 'none';
             return;
@@ -220,10 +226,14 @@ function renderAllAds() {
     });
 }
 
-function initAdSliders() {
-    document.querySelectorAll('.ad-slider-placeholder').forEach(el => {
+async function initAdSliders() {
+    const placeholders = document.querySelectorAll('.ad-slider-placeholder');
+    if (!placeholders.length) return;
+
+    const allAds = await getData(STORAGE_KEYS.ADS);
+    placeholders.forEach(el => {
         const type = el.getAttribute('data-ad-type') || 'banner';
-        const ads = getData(STORAGE_KEYS.ADS).filter(a => a.status === 'active' && a.type === type);
+        const ads = allAds.filter(a => a.status === 'active' && a.type === type);
         
         if (!ads.length) {
             el.style.display = 'none';
@@ -309,10 +319,10 @@ function initAdSliders() {
 }
 
 // Auto-inject on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-    injectGlobalLayouts();
-    renderAllAds();
-    initAdSliders();
+document.addEventListener('DOMContentLoaded', async () => {
+    await injectGlobalLayouts();
+    await renderAllAds();
+    await initAdSliders();
     
     // Inject Vercel Web Analytics (exclude localhost)
     if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {

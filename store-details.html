@@ -56,16 +56,17 @@
     </div>
 
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     let currentStore, currentStoreId, selectedProduct;
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         currentStoreId = params.get('id');
         if (!currentStoreId) { window.location.href = 'stores.html'; return; }
-        const stores = getData(STORAGE_KEYS.STORES);
+        const stores = await getData(STORAGE_KEYS.STORES);
         currentStore = stores.find(s => s.id === currentStoreId);
         if (!currentStore) { window.location.href = 'stores.html'; return; }
         document.title = `${currentStore.storeName} | Yemen Engineer`;
@@ -123,11 +124,11 @@
         document.getElementById('product-modal').classList.remove('open');
     }
 
-    function buyProduct() {
+    async function buyProduct() {
         const user = getCurrentUser();
         if (!user) { window.location.href = 'login.html'; return; }
         closeModal();
-        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+        const newReq = await insertRecord(STORAGE_KEYS.REQUESTS, {
             clientId: user.id,
             title: `شراء منتج: ${selectedProduct.name}`,
             category: 'مشتريات هندسية',
@@ -139,7 +140,7 @@
             status: 'NEW',
             registeredAt: new Date().toISOString()
         });
-        insertRecord(STORAGE_KEYS.OFFERS, {
+        await insertRecord(STORAGE_KEYS.OFFERS, {
             requestId: newReq.id,
             providerId: currentStore.agentId,
             providerName: currentStore.storeName,
@@ -153,10 +154,10 @@
         setTimeout(() => window.location.href = `request-details.html?id=${newReq.id}`, 1000);
     }
 
-    function requestQuote() {
+    async function requestQuote() {
         const user = getCurrentUser();
         if (!user) { window.location.href = 'login.html'; return; }
-        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+        const newReq = await insertRecord(STORAGE_KEYS.REQUESTS, {
             clientId: user.id,
             title: `طلب استفسار/تسعيرة من ${currentStore.storeName}`,
             category: 'استشارات هندسية',

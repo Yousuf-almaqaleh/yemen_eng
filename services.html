@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="assets/css/components.css">
     <link rel="stylesheet" href="assets/css/responsive.css">
 </head>
+
 <body>
     <header id="site-header" class="site-header"></header>
     <div class="page-header">
@@ -23,26 +25,28 @@
                 <input type="text" id="f-keyword" placeholder="اسم الخدمة أو كلمات دالة..." oninput="filterServices()">
             </div>
         </div>
-        <div id="services-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;"></div>
+        <div id="services-grid"
+            style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;"></div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    let allServices = [];
-    document.addEventListener('DOMContentLoaded', () => {
-        allServices = getData(STORAGE_KEYS.SERVICES);
-        renderServices(allServices);
-    });
+        let allServices = [];
+        document.addEventListener('DOMContentLoaded', async () => {
+            allServices = await getData(STORAGE_KEYS.SERVICES);
+            renderServices(allServices);
+        });
 
-    function renderServices(list) {
-        const container = document.getElementById('services-grid');
-        if (!list.length) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد خدمات مطابقة</div></div>';
-            return;
-        }
-        container.innerHTML = list.map(s => `
+        function renderServices(list) {
+            const container = document.getElementById('services-grid');
+            if (!list.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد خدمات مطابقة</div></div>';
+                return;
+            }
+            container.innerHTML = list.map(s => `
             <div class="card" style="display:flex;flex-direction:column;padding:0;">
                 <img src="${s.image}" style="width:100%;height:180px;object-fit:cover;border-radius:var(--border-radius) var(--border-radius) 0 0;">
                 <div style="padding:20px;flex:1;display:flex;flex-direction:column;">
@@ -54,13 +58,14 @@
                     </div>
                 </div>
             </div>`).join('');
-    }
+        }
 
-    function filterServices() {
-        const kw = document.getElementById('f-keyword').value.toLowerCase();
-        const filtered = allServices.filter(s => s.name.toLowerCase().includes(kw) || s.description.toLowerCase().includes(kw));
-        renderServices(filtered);
-    }
+        function filterServices() {
+            const kw = document.getElementById('f-keyword').value.toLowerCase();
+            const filtered = allServices.filter(s => s.name.toLowerCase().includes(kw) || s.description.toLowerCase().includes(kw));
+            renderServices(filtered);
+        }
     </script>
 </body>
+
 </html>

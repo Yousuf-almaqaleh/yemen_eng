@@ -23,27 +23,41 @@
         </div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     let currentUser, requestId, currentRequest;
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         currentUser = getCurrentUser();
         if (!currentUser) { window.location.href = 'login.html'; return; }
         const params = new URLSearchParams(window.location.search);
         requestId = params.get('id');
         if (!requestId) { window.location.href = 'requests.html'; return; }
-        const requests = getData(STORAGE_KEYS.REQUESTS);
+        const requests = await getData(STORAGE_KEYS.REQUESTS);
         currentRequest = requests.find(r => r.id === requestId);
         if (!currentRequest) { window.location.href = 'requests.html'; return; }
+
+        // Security authorization gate
+        if (currentUser.id !== currentRequest.clientId && currentUser.id !== currentRequest.targetProviderId && currentUser.type !== 'admin') {
+            const offers = await getData(STORAGE_KEYS.OFFERS);
+            const myOffer = offers.find(o => o.requestId === requestId && o.providerId === currentUser.id);
+            if (!myOffer || myOffer.status !== 'accepted') {
+                alert('غير مصرح لك بدخول هذه المحادثة.');
+                window.location.href = 'dashboard.html';
+                return;
+            }
+        }
+
         const reqInfoEl = document.getElementById('request-info');
         reqInfoEl.innerHTML = `<div class="section-block" style="margin-bottom:0;padding:16px;"><strong>المشروع:</strong> ${currentRequest.title}</div>`;
-        loadMessages();
+        await loadMessages();
     });
 
-    function loadMessages() {
-        const msgs = getData(STORAGE_KEYS.MESSAGES).filter(m => m.requestId === requestId).sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
+    async function loadMessages() {
+        const allMsgs = await getData(STORAGE_KEYS.MESSAGES);
+        const msgs = allMsgs.filter(m => m.requestId === requestId).sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
         const container = document.getElementById('chat-messages');
         container.innerHTML = msgs.map(m => {
             if (m.senderId === 'SYSTEM') return `<div class="chat-bubble system-msg">${m.content || m.message}</div>`;
@@ -56,7 +70,7 @@
         container.scrollTop = container.scrollHeight;
     }
 
-    function sendMessage() {
+    async function sendMessage() {
         const input = document.getElementById('msg-input');
         const text = input.value.trim();
         if (!text) return;
@@ -64,7 +78,7 @@
             showToast('رسالتك تحتوي على معلومات تواصل مباشر. يُمنع مشاركة أرقام الهواتف أو الروابط خارج المنصة.', 'error', 5000);
             return;
         }
-        insertRecord(STORAGE_KEYS.MESSAGES, {
+        await insertRecord(STORAGE_KEYS.MESSAGES, {
             requestId,
             senderId: currentUser.id,
             receiverId: '',
@@ -72,7 +86,7 @@
             timestamp: new Date().toISOString()
         });
         input.value = '';
-        loadMessages();
+        await loadMessages();
     }
     </script>
 </body>

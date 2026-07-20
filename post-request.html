@@ -17,17 +17,23 @@
         <form id="post-form">
             <div class="section-block">
                 <h2 class="section-block-title">تفاصيل الطلب</h2>
-                <div class="form-group"><label class="form-label">عنوان الطلب</label><input type="text" id="title" class="form-control" placeholder="مثال: تركيب منظومة طاقة شمسية 5 كيلووات" required></div>
-                <div class="form-group"><label class="form-label">التصنيف</label>
+                <div class="form-group" id="title-group"><label class="form-label">عنوان الطلب</label><input type="text" id="title" class="form-control" placeholder="مثال: تركيب منظومة طاقة شمسية 5 كيلووات" required></div>
+                <div class="form-group"><label class="form-label">نوع الطلب</label>
+                    <select id="request-type" class="form-control">
+                        <option value="service" selected>طلب خدمة</option>
+                        <option value="consultation">طلب استشارة</option>
+                    </select>
+                </div>
+                <div class="form-group" id="category-group"><label class="form-label">التصنيف</label>
                     <select id="category" class="form-control">
                         <option>طاقة شمسية</option><option>معماري</option><option>مدني وإنشاءات</option>
                         <option>ميكانيكا</option><option>تكييف وتبريد</option><option>شبكات واتصالات</option>
                         <option>مساحة</option><option>استشارات هندسية</option><option>سيارات</option>
                     </select>
                 </div>
-                <div class="form-group"><label class="form-label">وصف تفصيلي للطلب</label><textarea id="description" class="form-control" rows="6" placeholder="اشرح بالتفصيل ما تحتاجه، المواصفات الفنية، الأبعاد، أي تفاصيل تساعد المهندس على تقديم عرض دقيق." required></textarea></div>
+                <div class="form-group"><label class="form-label" id="description-label">وصف تفصيلي للطلب</label><textarea id="description" class="form-control" rows="6" placeholder="اشرح بالتفصيل ما تحتاجه، المواصفات الفنية، الأبعاد، أي تفاصيل تساعد المهندس على تقديم عرض دقيق." required></textarea></div>
             </div>
-            <div class="section-block">
+            <div class="section-block" id="location-section">
                 <h2 class="section-block-title">الموقع والتوقيت</h2>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div class="form-group"><label class="form-label">المحافظة</label>
@@ -40,7 +46,7 @@
                 </div>
                 <div class="form-group"><label class="form-label">العنوان التفصيلي</label><input type="text" id="location" class="form-control" placeholder="مثال: بجانب مسجد النور، شارع..."></div>
             </div>
-            <div class="section-block">
+            <div class="section-block" id="budget-section">
                 <h2 class="section-block-title">الميزانية والمدة</h2>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div class="form-group"><label class="form-label">الميزانية المتاحة (ريال يمني)</label><input type="number" id="budget" class="form-control" placeholder="مثال: 350000" min="0"></div>
@@ -51,42 +57,151 @@
         </form>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    function updateFormVisibility() {
+        const type = document.getElementById('request-type').value;
+        const isConsultation = type === 'consultation';
+        
+        document.getElementById('title-group').style.display = isConsultation ? 'none' : 'block';
+        document.getElementById('category-group').style.display = isConsultation ? 'none' : 'block';
+        document.getElementById('location-section').style.display = isConsultation ? 'none' : 'block';
+        document.getElementById('budget-section').style.display = isConsultation ? 'none' : 'block';
+        
+        document.getElementById('title').required = !isConsultation;
+        document.getElementById('city').required = !isConsultation;
+        
+        const descLabel = document.getElementById('description-label');
+        const descInput = document.getElementById('description');
+        if (isConsultation) {
+            descLabel.textContent = 'تفاصيل الاستشارة الهندسية وما ترغب في معرفته';
+            descInput.placeholder = 'اكتب هنا تفاصيل استشارتك للمهندس بوضوح، وسيقوم بمراجعتها والرد عليك.';
+        } else {
+            descLabel.textContent = 'وصف تفصيلي للطلب';
+            descInput.placeholder = 'اشرح بالتفصيل ما تحتاجه، المواصفات الفنية، الأبعاد، أي تفاصيل تساعد المهندس على تقديم عرض دقيق.';
+        }
+    }
+
+    document.getElementById('request-type').addEventListener('change', updateFormVisibility);
+
+    document.addEventListener('DOMContentLoaded', async () => {
         const user = getCurrentUser();
         if (!user) { window.location.href = 'login.html'; return; }
-        if (!['client','engineer','office','workshop','company'].includes(user.type)) {
+        if (user.type !== 'client' && user.type !== 'admin') {
+            alert('غير مصرح لك بنشر طلبات جديدة. هذه الميزة خاصة بالعملاء فقط.');
             window.location.href = 'dashboard.html';
+            return;
         }
+        
+        const params = new URLSearchParams(window.location.search);
+        const typeParam = params.get('type');
+        const providerId = params.get('providerId');
+        
+        if (typeParam === 'service' || typeParam === 'consultation') {
+            document.getElementById('request-type').value = typeParam;
+        }
+        
+        if (providerId) {
+            const users = await getData(STORAGE_KEYS.USERS);
+            const provider = users.find(u => u.id === providerId);
+            if (provider) {
+                const name = provider.officeName || provider.workshopName || provider.fullName;
+                const pageTitle = document.querySelector('main h1');
+                if (pageTitle) {
+                    if (typeParam === 'consultation') {
+                        pageTitle.textContent = `طلب استشارة هندسية من: ${name}`;
+                    } else {
+                        pageTitle.textContent = `طلب خدمة مباشرة من: ${name}`;
+                    }
+                }
+            }
+        }
+        
+        updateFormVisibility();
     });
 
-    document.getElementById('post-form').addEventListener('submit', e => {
+    document.getElementById('post-form').addEventListener('submit', async e => {
         e.preventDefault();
         const user = getCurrentUser();
-        const newReq = insertRecord(STORAGE_KEYS.REQUESTS, {
+        const params = new URLSearchParams(window.location.search);
+        const providerId = params.get('providerId');
+        const requestType = document.getElementById('request-type').value;
+        const isConsultation = requestType === 'consultation';
+        
+        let titleVal = document.getElementById('title').value;
+        let categoryVal = document.getElementById('category').value;
+        let govVal = document.getElementById('governorate').value;
+        let cityVal = document.getElementById('city').value;
+        let locationVal = document.getElementById('location').value;
+        let budgetVal = parseInt(document.getElementById('budget').value) || 0;
+        let durationVal = document.getElementById('duration').value;
+        
+        let targetProviderId = null;
+        if (providerId) {
+            const users = await getData(STORAGE_KEYS.USERS);
+            const provider = users.find(u => u.id === providerId);
+            if (provider) {
+                targetProviderId = providerId;
+                if (isConsultation) {
+                    titleVal = `استشارة موجهة للمهندس/الكيان: ${provider.officeName || provider.fullName}`;
+                    categoryVal = provider.specialty || provider.activityType || 'استشارات هندسية';
+                    govVal = provider.governorate || 'صنعاء';
+                    cityVal = provider.city || '';
+                    locationVal = '';
+                    budgetVal = 0;
+                    durationVal = 'N/A';
+                }
+            }
+        } else if (isConsultation) {
+            titleVal = `طلب استشارة هندسية من العميل: ${user.fullName}`;
+            categoryVal = 'استشارات هندسية';
+            govVal = user.governorate || 'صنعاء';
+            cityVal = user.city || '';
+            locationVal = '';
+            budgetVal = 0;
+            durationVal = 'N/A';
+        }
+
+        const newReq = await insertRecord(STORAGE_KEYS.REQUESTS, {
             clientId: user.id,
-            title: document.getElementById('title').value,
-            category: document.getElementById('category').value,
+            title: titleVal,
+            requestType: requestType,
+            targetProviderId: targetProviderId,
+            category: categoryVal,
             description: document.getElementById('description').value,
-            governorate: document.getElementById('governorate').value,
-            city: document.getElementById('city').value,
-            location: document.getElementById('location').value,
-            budget: parseInt(document.getElementById('budget').value) || 0,
-            duration: document.getElementById('duration').value,
+            governorate: govVal,
+            city: cityVal,
+            location: locationVal,
+            budget: budgetVal,
+            duration: durationVal,
             status: 'NEW',
             images: [],
             registeredAt: new Date().toISOString()
         });
-        insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+        
+        await insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
             userId: user.id,
             title: 'تم نشر طلبك بنجاح',
-            message: `تم نشر طلب "${newReq.title}" وبات مرئياً للمهندسين والمزودين.`,
+            message: `تم نشر طلب "${newReq.title}" بنجاح.`,
             link: `request-details.html?id=${newReq.id}`,
             read: false
         });
+
+        if (targetProviderId) {
+            await insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+                userId: targetProviderId,
+                title: isConsultation ? 'طلب استشارة جديد' : 'طلب خدمة جديد',
+                message: isConsultation 
+                    ? `أرسل لك العميل ${user.fullName} طلب استشارة بخصوص: ${(newReq.description || '').substring(0, 80)}...`
+                    : `أرسل لك العميل ${user.fullName} طلب خدمة مباشرة: ${newReq.title}`,
+                link: `request-details.html?id=${newReq.id}`,
+                read: false
+            });
+        }
+        
         showToast('تم نشر طلبك بنجاح!', 'success');
         setTimeout(() => window.location.href = `request-details.html?id=${newReq.id}`, 800);
     });

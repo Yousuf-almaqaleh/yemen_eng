@@ -146,14 +146,15 @@
         </section>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const users = getData(STORAGE_KEYS.USERS);
-        const services = getData(STORAGE_KEYS.SERVICES);
-        const stores = getData(STORAGE_KEYS.STORES);
+    document.addEventListener('DOMContentLoaded', async () => {
+        const users = await getData(STORAGE_KEYS.USERS);
+        const services = await getData(STORAGE_KEYS.SERVICES);
+        const stores = await getData(STORAGE_KEYS.STORES);
         const engineers = users.filter(u => u.type === 'engineer');
         const providers = users.filter(u => ['office','workshop','company'].includes(u.type));
         document.getElementById('stat-engineers').textContent = engineers.length;
@@ -208,7 +209,7 @@
                 <img src="${s.image}" style="width:100%;height:170px;object-fit:cover;border-radius:var(--border-radius) var(--border-radius) 0 0;">
                 <div style="padding:18px;flex:1;display:flex;flex-direction:column;">
                     <h3 class="card-title">${s.name}</h3>
-                    <p class="card-desc" style="flex:1;">${s.description.substring(0,90)}...</p>
+                    <p class="card-desc" style="flex:1;">${(s.description || '').substring(0,90)}...</p>
                     <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-color);padding-top:14px;">
                         <span style="font-size:.8rem;color:var(--text-muted);">${s.countProviders}</span>
                         <a href="service-details.html?id=${s.id}" class="btn btn-primary btn-sm">طلب الخدمة</a>

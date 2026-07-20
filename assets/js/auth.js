@@ -15,8 +15,8 @@ function setCurrentUser(user) {
     }
 }
 
-function login(email, password, expectedRole = null) {
-    const users = getData(STORAGE_KEYS.USERS);
+async function login(email, password, expectedRole = null) {
+    const users = await getData(STORAGE_KEYS.USERS);
     const user = users.find(u => {
         const matchesEmail = u.email.toLowerCase() === email.toLowerCase();
         const matchesPassword = u.password === password;
@@ -31,8 +31,8 @@ function login(email, password, expectedRole = null) {
     return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
 }
 
-function demoLogin(role) {
-    const users = getData(STORAGE_KEYS.USERS);
+async function demoLogin(role) {
+    const users = await getData(STORAGE_KEYS.USERS);
     const user = users.find(u => u.type === role);
     if (user) {
         setCurrentUser(user);
@@ -47,8 +47,8 @@ function logout() {
     window.location.href = isInAdmin ? '../index.html' : 'index.html';
 }
 
-function registerUser(userData) {
-    const users = getData(STORAGE_KEYS.USERS);
+async function registerUser(userData) {
+    const users = await getData(STORAGE_KEYS.USERS);
     if (users.some(u => u.email.toLowerCase() === userData.email.toLowerCase())) {
         return { success: false, message: 'البريد الإلكتروني مسجل بالفعل.' };
     }
@@ -64,9 +64,9 @@ function registerUser(userData) {
         projects: [],
         services: []
     };
-    const newUser = insertRecord(STORAGE_KEYS.USERS, finalUserData);
+    const newUser = await insertRecord(STORAGE_KEYS.USERS, finalUserData);
     if (newUser.type === 'agent') {
-        const newStore = insertRecord(STORAGE_KEYS.STORES, {
+        const newStore = await insertRecord(STORAGE_KEYS.STORES, {
             agentId: newUser.id,
             storeName: `معرض ${newUser.fullName}`,
             specialty: newUser.productTypes || 'قطع غيار ومعدات هندسية',
@@ -75,16 +75,16 @@ function registerUser(userData) {
             logo: 'https://images.unsplash.com/photo-1513828583845-c469f7d9e7d7?w=150',
             products: []
         });
-        updateRecord(STORAGE_KEYS.USERS, newUser.id, { storeId: newStore.id });
+        await updateRecord(STORAGE_KEYS.USERS, newUser.id, { storeId: newStore.id });
     }
-    insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
+    await insertRecord(STORAGE_KEYS.NOTIFICATIONS, {
         userId: 'u_admin',
         title: 'طلب انضمام جديد للمنصة',
         message: `سجل مستخدم جديد باسم (${newUser.fullName}) كـ ${getRoleArabicName(newUser.type)} بانتظار المراجعة.`,
         link: 'admin/users.html',
         read: false
     });
-    return { success: true, user: finalUserData };
+    return { success: true, user: newUser };
 }
 
 function getRoleArabicName(role) {

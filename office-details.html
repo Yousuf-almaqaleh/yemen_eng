@@ -37,15 +37,16 @@
         </div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         if (!id) { window.location.href = 'offices.html'; return; }
-        const users = getData(STORAGE_KEYS.USERS);
+        const users = await getData(STORAGE_KEYS.USERS);
         const provider = users.find(u => u.id === id);
         if (!provider) { window.location.href = 'offices.html'; return; }
 
@@ -90,8 +91,11 @@
         const canContact = currentUser && currentUser.id !== provider.id;
         document.getElementById('company-action').innerHTML = `
             <h2 class="section-block-title">تواصل آمن</h2>
-            ${canContact ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">انشر طلب خدمة لمناقشة التفاصيل وتلقي عرض سعر رسمي عبر المنصة باحترافية وسرية.</p>
-                <a href="post-request.html?providerId=${provider.id}" class="btn btn-primary" style="width:100%;">اطلب خدمة من الكيان</a>` : 
+            ${canContact ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">حدد نوع الطلب لإرساله مباشرة إلى الكيان:</p>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <a href="post-request.html?providerId=${provider.id}&type=service" class="btn btn-primary" style="width:100%;justify-content:center;">طلب خدمة من الكيان</a>
+                    <a href="post-request.html?providerId=${provider.id}&type=consultation" class="btn btn-outline" style="width:100%;justify-content:center;">طلب استشارة من الكيان</a>
+                </div>` : 
                 `<p style="font-size:.85rem;color:var(--text-muted);">سجل الدخول كعميل لطلب الخدمات.</p>
                 <a href="login.html" class="btn btn-primary" style="width:100%;">تسجيل الدخول</a>`}`;
     });

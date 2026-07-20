@@ -203,18 +203,10 @@
         <div class="container footer-inner">
             <p>&copy; 2026 لوحة الإدارة الآمنة لمنصة مهندسي اليمن.</p>
         </div>
-    </footer>
-
+    <script src="../assets/js/supabase-config.js"></script>
+    <script src="../assets/js/storage.js"></script>
     <script>
-    // Minimal mock function replication since config paths might differ
-    function getStorage(key) {
-        return JSON.parse(localStorage.getItem(key) || '[]');
-    }
-    function saveStorage(key, val) {
-        localStorage.setItem(key, JSON.stringify(val));
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         // Authenticate admin
         const cur = JSON.parse(localStorage.getItem('ye_current_user') || 'null');
         if (!cur || cur.type !== 'admin') {
@@ -224,8 +216,8 @@
         }
         document.getElementById('admin-name').textContent = cur.fullName;
 
-        loadStats();
-        renderTabUsers();
+        await loadStats();
+        await renderTabUsers();
     });
 
     function handleLogout() {
@@ -233,10 +225,10 @@
         window.location.href = '../login.html';
     }
 
-    function loadStats() {
-        const u = getStorage('ye_users');
-        const r = getStorage('ye_requests');
-        const ads = getStorage('ye_ads');
+    async function loadStats() {
+        const u = await getData(STORAGE_KEYS.USERS);
+        const r = await getData(STORAGE_KEYS.REQUESTS);
+        const ads = await getData(STORAGE_KEYS.ADS);
         
         let totalEarnings = 0;
         ads.forEach(ad => {
@@ -253,20 +245,20 @@
         document.getElementById('c-earnings').textContent = totalEarnings.toLocaleString() + ' ريال';
     }
 
-    function switchTab(tab) {
+    async function switchTab(tab) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
         event.target.classList.add('active');
         document.getElementById(`${tab}-tab`).style.display = 'block';
 
-        if (tab === 'users') renderTabUsers();
-        else if (tab === 'requests') renderTabRequests();
-        else if (tab === 'stores') renderTabStores();
-        else if (tab === 'ads') renderTabAds();
+        if (tab === 'users') await renderTabUsers();
+        else if (tab === 'requests') await renderTabRequests();
+        else if (tab === 'stores') await renderTabStores();
+        else if (tab === 'ads') await renderTabAds();
     }
 
-    function renderTabUsers() {
-        const users = getStorage('ye_users');
+    async function renderTabUsers() {
+        const users = await getData(STORAGE_KEYS.USERS);
         const roleLabels = { client:'عميل', engineer:'مهندس', office:'مكتب هندسي', workshop:'ورشة فنية', agent:'وكيل', admin:'مدير' };
         const body = document.getElementById('users-table-body');
         body.innerHTML = users.map(u => `
@@ -284,9 +276,9 @@
             </tr>`).join('');
     }
 
-    function renderTabRequests() {
-        const reqs = getStorage('ye_requests');
-        const users = getStorage('ye_users');
+    async function renderTabRequests() {
+        const reqs = await getData(STORAGE_KEYS.REQUESTS);
+        const users = await getData(STORAGE_KEYS.USERS);
         const body = document.getElementById('requests-table-body');
         body.innerHTML = reqs.map(r => {
             const client = users.find(u => u.id === r.clientId) || {};
@@ -296,7 +288,7 @@
             <tr>
                 <td style="font-weight:700;">${r.title}</td>
                 <td>${client.fullName || r.clientId}</td>
-                <td>${r.budget.toLocaleString()} ريال</td>
+                <td>${(r.budget || 0).toLocaleString()} ريال</td>
                 <td><span class="badge ${statusCls[r.status] || 'badge-pending'}">${statusLabels[r.status] || r.status}</span></td>
                 <td>${new Date(r.createdAt || r.registeredAt).toLocaleDateString('ar-YE')}</td>
                 <td class="action-cell">
@@ -307,9 +299,9 @@
         }).join('');
     }
 
-    function renderTabStores() {
-        const stores = getStorage('ye_stores');
-        const users = getStorage('ye_users');
+    async function renderTabStores() {
+        const stores = await getData(STORAGE_KEYS.STORES);
+        const users = await getData(STORAGE_KEYS.USERS);
         const body = document.getElementById('stores-table-body');
         body.innerHTML = stores.map(s => {
             const agent = users.find(u => u.id === s.agentId) || {};
@@ -326,40 +318,33 @@
         }).join('');
     }
 
-    function toggleVerifyUser(id, state) {
-        const u = getStorage('ye_users');
-        const idx = u.findIndex(user => user.id === id);
-        if (idx !== -1) {
-            u[idx].isVerified = state;
-            saveStorage('ye_users', u);
-            loadStats();
-            renderTabUsers();
+    async function toggleVerifyUser(id, state) {
+        const updated = await updateRecord(STORAGE_KEYS.USERS, id, { isVerified: state });
+        if (updated) {
+            await loadStats();
+            await renderTabUsers();
         }
     }
 
-    function deleteUser(id) {
+    async function deleteUser(id) {
         if (confirm('هل أنت متأكد من حذف هذا المستخدم نهائيا؟')) {
-            const u = getStorage('ye_users');
-            const filtered = u.filter(user => user.id !== id);
-            saveStorage('ye_users', filtered);
-            loadStats();
-            renderTabUsers();
+            await deleteRecord(STORAGE_KEYS.USERS, id);
+            await loadStats();
+            await renderTabUsers();
         }
     }
 
-    function deleteRequest(id) {
+    async function deleteRequest(id) {
         if (confirm('هل أنت متأكد من حذف هذا الطلب نهائيا؟')) {
-            const r = getStorage('ye_requests');
-            const filtered = r.filter(req => req.id !== id);
-            saveStorage('ye_requests', filtered);
-            loadStats();
-            renderTabRequests();
+            await deleteRecord(STORAGE_KEYS.REQUESTS, id);
+            await loadStats();
+            await renderTabRequests();
         }
     }
 
-    function renderTabAds() {
-        const ads = getStorage('ye_ads');
-        const users = getStorage('ye_users');
+    async function renderTabAds() {
+        const ads = await getData(STORAGE_KEYS.ADS);
+        const users = await getData(STORAGE_KEYS.USERS);
         const body = document.getElementById('ads-table-body');
         
         const statusMap = {
@@ -396,39 +381,27 @@
         }).join('');
     }
 
-    function approveAd(id) {
-        const ads = getStorage('ye_ads');
-        const idx = ads.findIndex(a => a.id === id);
-        if (idx !== -1) {
-            ads[idx].status = 'active';
-            saveStorage('ye_ads', ads);
-            loadStats();
-            renderTabAds();
-        }
+    async function approveAd(id) {
+        await updateRecord(STORAGE_KEYS.ADS, id, { status: 'active' });
+        await loadStats();
+        await renderTabAds();
     }
 
-    function togglePauseAd(id, newStatus) {
-        const ads = getStorage('ye_ads');
-        const idx = ads.findIndex(a => a.id === id);
-        if (idx !== -1) {
-            ads[idx].status = newStatus;
-            saveStorage('ye_ads', ads);
-            loadStats();
-            renderTabAds();
-        }
+    async function togglePauseAd(id, newStatus) {
+        await updateRecord(STORAGE_KEYS.ADS, id, { status: newStatus });
+        await loadStats();
+        await renderTabAds();
     }
 
-    function deleteAd(id) {
+    async function deleteAd(id) {
         if (confirm('هل أنت متأكد من حذف هذا الإعلان نهائياً؟')) {
-            const ads = getStorage('ye_ads');
-            const filtered = ads.filter(a => a.id !== id);
-            saveStorage('ye_ads', filtered);
-            loadStats();
-            renderTabAds();
+            await deleteRecord(STORAGE_KEYS.ADS, id);
+            await loadStats();
+            await renderTabAds();
         }
     }
 
-    function createAd(e) {
+    async function createAd(e) {
         e.preventDefault();
         const title = document.getElementById('a-ad-title').value.trim();
         const description = document.getElementById('a-ad-desc').value.trim();
@@ -438,9 +411,7 @@
         const pricingModel = document.getElementById('a-ad-model').value;
         const budget = Number(document.getElementById('a-ad-budget').value);
 
-        const ads = getStorage('ye_ads');
         const newAd = {
-            id: 'ad_' + Date.now(),
             advertiserId: 'admin',
             title,
             description,
@@ -453,19 +424,17 @@
             pricingModel,
             cpcRate: 150,
             cpmRate: 2500,
-            status: 'active',
-            createdAt: new Date().toISOString()
+            status: 'active'
         };
-        ads.push(newAd);
-        saveStorage('ye_ads', ads);
+        await insertRecord(STORAGE_KEYS.ADS, newAd);
 
         document.getElementById('admin-new-ad-form').reset();
-        loadStats();
-        renderTabAds();
+        await loadStats();
+        await renderTabAds();
         alert('تم نشر الإعلان بنجاح وهو نشط الآن على المنصة!');
     }
 
-    function createRequest(e) {
+    async function createRequest(e) {
         e.preventDefault();
         const title    = document.getElementById('req-title').value.trim();
         const category = document.getElementById('req-category').value;
@@ -475,9 +444,7 @@
         const duration = document.getElementById('req-duration').value.trim();
         const desc     = document.getElementById('req-desc').value.trim();
 
-        const requests = getStorage('ye_requests');
         const newReq = {
-            id: 'req_' + Date.now(),
             clientId: 'admin',
             title,
             category,
@@ -489,15 +456,13 @@
             duration,
             status: 'NEW',
             images: [],
-            registeredAt: new Date().toISOString(),
-            createdAt: new Date().toISOString()
+            registeredAt: new Date().toISOString()
         };
-        requests.push(newReq);
-        saveStorage('ye_requests', requests);
+        await insertRecord(STORAGE_KEYS.REQUESTS, newReq);
 
         document.getElementById('admin-req-form').reset();
-        loadStats();
-        renderTabRequests();
+        await loadStats();
+        await renderTabRequests();
         alert('تم نشر المشروع / المناقصة بنجاح وهو متاح الآن للمهندسين!');
     }
     </script>

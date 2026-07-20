@@ -34,15 +34,16 @@
         </div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         if (!id) { window.location.href = 'engineers.html'; return; }
-        const users = getData(STORAGE_KEYS.USERS);
+        const users = await getData(STORAGE_KEYS.USERS);
         const eng = users.find(u => u.id === id);
         if (!eng) { window.location.href = 'engineers.html'; return; }
         document.title = `${eng.fullName} | Yemen Engineer`;
@@ -96,9 +97,12 @@
         const currentUser = getCurrentUser();
         const canContact = currentUser && currentUser.id !== eng.id;
         document.getElementById('eng-action').innerHTML = `
-            <h2 class="section-block-title">تواصل</h2>
-            ${canContact ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">انشر طلب خدمة وسيقوم المهندس بمراجعته وتقديم عرض.</p>
-                <a href="post-request.html?providerId=${eng.id}" class="btn btn-primary" style="width:100%;">طلب خدمة</a>` : 
+            <h2 class="section-block-title">تواصل مباشر</h2>
+            ${canContact ? `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;">حدد نوع الطلب لإرساله مباشرة للمهندس:</p>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <a href="post-request.html?providerId=${eng.id}&type=service" class="btn btn-primary" style="width:100%;justify-content:center;">طلب خدمة</a>
+                    <a href="post-request.html?providerId=${eng.id}&type=consultation" class="btn btn-outline" style="width:100%;justify-content:center;">طلب استشارة</a>
+                </div>` : 
                 `<p style="font-size:.85rem;color:var(--text-muted);">سجل دخول للتواصل مع المهندس.</p>
                 <a href="login.html" class="btn btn-primary" style="width:100%;">تسجيل الدخول</a>`}`;
     });

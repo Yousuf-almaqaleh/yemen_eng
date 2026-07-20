@@ -42,49 +42,75 @@
                     <option value="COMPLETED">مكتمل</option>
                 </select>
             </div>
+            <div class="filter-field"><label>نوع الطلب</label>
+                <select id="f-type">
+                    <option value="">كل الأنواع</option>
+                    <option value="service">طلب خدمة</option>
+                    <option value="consultation">طلب استشارة</option>
+                </select>
+            </div>
             <button onclick="applyFilters()" class="btn btn-primary">بحث</button>
         </div>
         <div class="ad-placeholder" data-ad-type="banner"></div>
         <div id="requests-list" style="display:flex;flex-direction:column;gap:16px;"></div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     let allRequests = [];
-    document.addEventListener('DOMContentLoaded', () => {
-        allRequests = getData(STORAGE_KEYS.REQUESTS);
+    let currentUser;
+    let cachedUsers = [];
+    document.addEventListener('DOMContentLoaded', async () => {
+        currentUser = getCurrentUser();
+        allRequests = await getData(STORAGE_KEYS.REQUESTS);
+        cachedUsers = await getData(STORAGE_KEYS.USERS);
         renderRequests(allRequests);
     });
 
-    function applyFilters() {
+    async function applyFilters() {
         const cat = document.getElementById('f-cat').value;
         const gov = document.getElementById('f-gov').value;
         const status = document.getElementById('f-status').value;
+        const type = document.getElementById('f-type').value;
         let results = allRequests;
         if (cat) results = results.filter(r => r.category === cat);
         if (gov) results = results.filter(r => r.governorate === gov);
         if (status) results = results.filter(r => r.status === status);
+        if (type) results = results.filter(r => r.requestType === type);
         renderRequests(results);
     }
 
     function renderRequests(list) {
         const container = document.getElementById('requests-list');
-        if (!list.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد طلبات</div></div>'; return; }
-        const users = getData(STORAGE_KEYS.USERS);
-        container.innerHTML = list.map(r => {
+        // Filter out private consultations where targetProviderId is set and the current user is not the client, targetProviderId, or admin.
+        const visibleList = list.filter(r => {
+            if (r.requestType === 'consultation' && r.targetProviderId) {
+                return currentUser && (currentUser.id === r.clientId || currentUser.id === r.targetProviderId || currentUser.type === 'admin');
+            }
+            return true;
+        });
+
+        if (!visibleList.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد طلبات</div></div>'; return; }
+        const users = cachedUsers;
+        container.innerHTML = visibleList.map(r => {
             const client = users.find(u => u.id === r.clientId) || {};
             const statusInfo = getStatusLabel(r.status);
+            const typeLabel = r.requestType === 'consultation' ? 'استشارة' : 'خدمة';
+            const typeCls = r.requestType === 'consultation' ? 'badge-info' : 'badge-primary';
             return `
             <div class="card" style="display:flex;gap:20px;align-items:flex-start;">
                 <div style="flex:1;">
                     <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                         <h3 style="font-size:1.02rem;font-weight:700;color:var(--dark-color);">${r.title}</h3>
+                        <span class="badge ${typeCls}">${typeLabel}</span>
                         <span class="badge ${statusInfo.cls}">${statusInfo.text}</span>
                     </div>
-                    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:10px;">${r.description.substring(0,120)}...</p>
+                    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:10px;">${(r.description || '').substring(0,120)}...</p>
                     <div class="card-meta">
+                        <span>نوع الطلب: ${typeLabel}</span>
                         <span>التصنيف: ${r.category}</span>
                         <span>الميزانية: ${formatNumber(r.budget)} ريال</span>
                         <span>المدة: ${r.duration}</span>

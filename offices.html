@@ -42,13 +42,14 @@
         <div id="providers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px;"></div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     let allProviders = [];
-    document.addEventListener('DOMContentLoaded', () => {
-        const users = getData(STORAGE_KEYS.USERS);
+    document.addEventListener('DOMContentLoaded', async () => {
+        const users = await getData(STORAGE_KEYS.USERS);
         allProviders = users.filter(u => ['office', 'workshop', 'company'].includes(u.type));
         applyFilters();
     });

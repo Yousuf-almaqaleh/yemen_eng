@@ -39,13 +39,14 @@
         <div id="engineers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;"></div>
     </main>
     <footer id="site-footer" class="site-footer"></footer>
+    <script src="assets/js/supabase-config.js"></script>
     <script src="assets/js/storage.js"></script>
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
     let allEngineers = [];
-    document.addEventListener('DOMContentLoaded', () => {
-        const users = getData(STORAGE_KEYS.USERS);
+    document.addEventListener('DOMContentLoaded', async () => {
+        const users = await getData(STORAGE_KEYS.USERS);
         allEngineers = users.filter(u => u.type === 'engineer');
         const params = new URLSearchParams(window.location.search);
         if (params.get('spec')) document.getElementById('f-spec').value = params.get('spec');
