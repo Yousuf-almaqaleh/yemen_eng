@@ -1,5 +1,9 @@
 /* responsive.css — Mobile & Tablet Breakpoints */
 
+/* Auth button responsive labels */
+.auth-btn-full { display: inline; }
+.auth-btn-short { display: none; }
+
 @media (max-width: 1024px) {
     .two-col-layout { grid-template-columns: 1fr; }
     .dashboard-layout { grid-template-columns: 1fr; }
@@ -34,6 +38,8 @@
     .footer-links { flex-wrap: wrap; justify-content: center; }
     .filter-bar { flex-direction: column; }
     .filter-field { min-width: 100%; }
+    .auth-btn-full { display: none; }
+    .auth-btn-short { display: inline; }
 }
 
 @media (max-width: 520px) {

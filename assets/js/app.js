@@ -80,7 +80,10 @@ async function injectGlobalLayouts() {
         </div>
     ` : `
         <div class="auth-buttons">
-            <a href="${basePath}login.html" class="btn btn-primary btn-sm">تسجيل دخول / إنشاء حساب</a>
+            <a href="${basePath}login.html" class="btn btn-primary btn-sm">
+                <span class="auth-btn-full">تسجيل دخول / إنشاء حساب</span>
+                <span class="auth-btn-short">تسجيل دخول</span>
+            </a>
         </div>
     `;
 
